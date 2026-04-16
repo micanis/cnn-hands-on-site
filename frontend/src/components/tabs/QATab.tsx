@@ -33,7 +33,7 @@ export default function QATab() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('${import.meta.env.PUBLIC_API_URL}/api/ask-question', {
+      const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/ask-question`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session, content }),
