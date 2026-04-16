@@ -36,10 +36,10 @@ export default function ItemsTab({isAdmin = false}: ItemsTabProps) {
   const handleDownload = async (fileName: string) => {
     if (!fileName) return
     try {
-        const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/download-url?filename=${encodeURIComponent(fileName)}`);
-        const data = await res.json();
+        const res = `${import.meta.env.PUBLIC_API_URL}/api/download-url?filename=${fileName}&action=view`
+        // const data = await res.json();
 
-        window.open(data.downloadUrl, '_blank')
+        window.open(res, '_blank')
     } catch (err) {
         console.error("download error:", err)
         alert("Failed to download")

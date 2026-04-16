@@ -25,18 +25,18 @@ export default function SlidesTab() {
     if (!fileName) return;
     try {
       // Go APIを叩いて署名付きURLを取得
-      const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/download-url?filename=${encodeURIComponent(fileName)}&action=${action}`);
-      const data = await res.json();
+      const res = `${import.meta.env.PUBLIC_API_URL}/api/download-url?filename=${fileName}&action=view&action=${action}`
+      // const data = await res.json();
       
       if (action === 'view') {
         // 閲覧: そのまま別タブで開く（ブラウザのビューワーに任せる）
-        window.open(data.downloadUrl, '_blank');
+        window.open(res, '_blank');
       } else {
         // ダウンロード: ファイルを一度React側のメモリに読み込み(Blob化)、
         // 強制的にローカルファイルとして保存させる
         
         // 1. GCSからファイルの実体をフェッチする
-        const fileRes = await fetch(data.downloadUrl);
+        const fileRes = await fetch(res);
         const blob = await fileRes.blob();
         
         // 2. メモリ上に一時的なローカルURLを作成

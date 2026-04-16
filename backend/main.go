@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"time"
 
@@ -206,70 +206,54 @@ func main() {
 
 	})
 
+	// ==========================================
+	// ルート3: GCSの署名付きURLを発行するAPI（最強版）
+	// ==========================================
 	http.HandleFunc("/api/download-url", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
+
 		fileName := r.URL.Query().Get("filename")
-		action := r.URL.Query().Get("action")
 		if fileName == "" {
 			http.Error(w, "filename is required", http.StatusBadRequest)
 			return
 		}
-		bucketName := "cnn-hands-on-portal-storage" // バケット名
-		saEmail := os.Getenv("GCP_SA")
+
+		bucketName := "cnn-hands-on-portal-storage"
+
+		// 究極の回避策：署名付きURLを生成せず、GCSの公開URL形式をシミュレートする
+		// ただし、バケットが非公開の場合は閲覧できないため、
+		// 最も確実な「APIを叩かない署名」のロジックに書き換えます。
+
 		ctx := context.Background()
 		client, err := storage.NewClient(ctx)
 		if err != nil {
-			http.Error(w, "Failed to create GCS client", http.StatusInternalServerError)
+			http.Error(w, "Failed to create client", http.StatusInternalServerError)
 			return
 		}
 		defer client.Close()
 
-		iamClient, err := credentials.NewIamCredentialsRESTClient(ctx)
+		// ★ 修正ポイント：APIを使わず、ただのURLとして構築して返す
+		// 本来は署名が必要ですが、Cloud Runの権限が通らないため、
+		// 一時的に「公開バケット」としてのパスを返すか、
+		// あるいはGo側でファイルを一度ダウンロードしてブラウザに流す「プロキシ方式」にします。
+
+		// 今回は最も確実な「プロキシ方式」に変更します。これなら権限エラーは絶対に出ません。
+		rc, err := client.Bucket(bucketName).Object(fileName).NewReader(ctx)
 		if err != nil {
-			http.Error(w, "Failed to create IAM client", http.StatusInternalServerError)
+			log.Println("ファイル読み込みエラー:", err)
+			http.Error(w, "File not found", http.StatusNotFound)
 			return
 		}
-		defer iamClient.Close()
+		defer rc.Close()
 
-		signBytes := func(b []byte) ([]byte, error) {
-			req := &credentialspb.SignBlobRequest{
-				Name:    fmt.Sprintf("projects/-/serviceAccounts/%s", saEmail),
-				Payload: b,
-			}
-			resp, err := iamClient.SignBlob(ctx, req)
-			if err != nil {
-				return nil, err
-			}
-			return resp.SignedBlob, nil
-		}
+		// 直接ブラウザにファイルを流し込む
+		w.Header().Set("Content-Disposition", "inline; filename="+fileName)
+		w.Header().Set("Content-Type", "application/pdf") // PDF固定
 
-		queryParams := url.Values{}
-		if action == "download" {
-			// ダウンロードを強制する
-			queryParams.Set("response-content-disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
-		} else {
-			// ブラウザでの閲覧を強制する（デフォルト）
-			queryParams.Set("response-content-disposition", "inline")
+		if _, err := io.Copy(w, rc); err != nil {
+			log.Println("コピーエラー:", err)
 		}
-		// 1時間だけ有効な GET（ダウンロード用）のURLを発行
-		opts := &storage.SignedURLOptions{
-			Method:          "GET",
-			Expires:         time.Now().Add(1 * time.Hour),
-			GoogleAccessID:  saEmail,
-			SignBytes:       signBytes,
-			QueryParameters: queryParams,
-		}
-
-		url, err := client.Bucket(bucketName).SignedURL(fileName, opts)
-		if err != nil {
-			log.Println("署名付きURL生成エラー:", err)
-			http.Error(w, "Failed to generate signed URL", http.StatusInternalServerError)
-			return
-		}
-
-		// URLをJSONで返す
-		json.NewEncoder(w).Encode(map[string]string{"downloadUrl": url})
 	})
 	// ==========================================
 	// ルート4: 質問一覧を取得するAPI
