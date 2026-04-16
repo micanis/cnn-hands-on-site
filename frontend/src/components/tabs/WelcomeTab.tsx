@@ -20,7 +20,7 @@ export default function WelcomeTab() {
 
   useEffect(() => {
     // 全資料を取得
-    fetch('${import.meta.env.PUBLIC_API_URL}/api/materials')
+    fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials`)
       .then(res => res.json())
       .then((data: Material[]) => {
         // IDが大きい順（新しい順）に並べ替え、最新の3件だけを取得

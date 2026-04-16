@@ -27,7 +27,7 @@ export default function ItemsTab({isAdmin = false}: ItemsTabProps) {
   };
 
   useEffect(() => {
-    fetch('${import.meta.env.PUBLIC_API_URL}/api/materials?category=item')
+    fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=item`)
         .then(res => res.json())
         .then(data => setItems(data))
         .catch(err => console.error("API Error:", err))

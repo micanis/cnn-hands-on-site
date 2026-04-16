@@ -16,7 +16,7 @@ export default function QATab() {
 
   // 質問一覧を取得する関数
   const fetchQuestions = () => {
-    fetch('${import.meta.env.PUBLIC_API_URL}/api/questions')
+    fetch(`${import.meta.env.PUBLIC_API_URL}/api/questions`)
       .then(res => res.json())
       .then(data => setQuestions(data))
       .catch(err => console.error("API Error:", err));

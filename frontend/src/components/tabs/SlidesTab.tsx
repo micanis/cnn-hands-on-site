@@ -15,7 +15,7 @@ export default function SlidesTab() {
 
   useEffect(() => {
     // カテゴリを 'slide' に指定して取得
-    fetch('${import.meta.env.PUBLIC_API_URL}/api/materials?category=slide')
+    fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=slide`)
       .then(res => res.json())
       .then(data => setSlides(data))
       .catch(err => console.error("API Error:", err));
