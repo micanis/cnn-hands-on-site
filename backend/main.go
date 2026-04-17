@@ -7,17 +7,18 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
-	"time"
+	"path/filepath"
 
 	"cloud.google.com/go/storage"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-
-	credentials "cloud.google.com/go/iam/credentials/apiv1"
-	"cloud.google.com/go/iam/credentials/apiv1/credentialspb"
+	"google.golang.org/api/option"
 )
+
+// ---- データ構造 ----
 
 type Material struct {
 	ID       int    `json:"id"`
@@ -34,299 +35,276 @@ type Question struct {
 	CreatedAt string `json:"created_at"`
 }
 
+// ---- アプリケーション本体 ----
+
+// Server は依存関係をまとめた構造体
+type Server struct {
+	db         *sql.DB
+	gcsClient  *storage.Client
+	bucketName string
+}
+
 func main() {
-	log.Println("[Step 1] サーバー起動処理を開始します...")
+	log.Println("--- サーバー起動処理開始 ---")
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Warning: .envファイルが見つかりません。")
-	} else {
-		log.Println("[Step 2] .envファイルの読み込み完了")
-	}
+	_ = godotenv.Load() // ローカル用。Herokuでは無視される
 
+	// --- DB接続 ---
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		log.Fatal("エラー: DATABASE_URL が設定されていません。")
+		log.Fatal("DATABASE_URL が設定されていません")
 	}
-
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal("エラー: DBドライバーの準備に失敗しました:", err)
+		log.Fatalf("DB接続準備失敗: %v", err)
 	}
 	defer db.Close()
 
-	log.Println("[Step 3] Neonデータベースに接続(Ping)を試みています...")
 	if err := db.Ping(); err != nil {
-		log.Fatal("エラー: データベースへのPingに失敗しました:", err)
+		log.Fatalf("DB接続(Ping)失敗: %v", err)
 	}
-	log.Println("[Step 4] Neonデータベースへの接続成功！")
+	log.Println("Neonデータベース接続成功")
 
-	// ==========================================
-	// ルート1: スライド一覧を取得するAPI
-	// ==========================================
-	http.HandleFunc("/api/materials", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		category := r.URL.Query().Get("category")
+	// --- GCSクライアント ---
+	ctx := context.Background()
+	gcsClient, err := newGCSClient(ctx)
+	if err != nil {
+		// GCS無しでは続行不可なので Fatal にする
+		log.Fatalf("GCSクライアント作成失敗: %v", err)
+	}
+	defer gcsClient.Close()
+	log.Println("GCSクライアント準備完了")
 
-		query := "SELECT id, title, pages, category, file_path FROM materials"
-		var rows *sql.Rows
-		var err error
+	bucketName := os.Getenv("GCS_BUCKET_NAME")
+	if bucketName == "" {
+		bucketName = "cnn-hands-on-portal-storage" // フォールバック
+	}
 
-		if category != "" {
-			rows, err = db.Query(query+" WHERE category = $1 ORDER BY id ASC", category)
-		} else {
-			rows, err = db.Query(query + " ORDER BY id ASC")
-		}
+	srv := &Server{
+		db:         db,
+		gcsClient:  gcsClient,
+		bucketName: bucketName,
+	}
 
-		if err != nil {
-			http.Error(w, "Failed to query database", http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
+	// --- ルーティング ---
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/materials", srv.handleMaterials)
+	mux.HandleFunc("/api/download-url", srv.handleDownload)
+	mux.HandleFunc("/api/questions", srv.handleGetQuestions)
+	mux.HandleFunc("/api/ask-question", srv.handlePostQuestion)
 
-		var materials []Material
-		for rows.Next() {
-			var s Material
-			// SQLで指定した5つのカラムすべてを受け取るように修正
-			if err := rows.Scan(&s.ID, &s.Title, &s.Pages, &s.Category, &s.FilePath); err != nil {
-				log.Println("Scan error:", err) // エラー内容をログに出すとデバッグしやすいです
-				continue
-			}
-			materials = append(materials, s)
-		}
-
-		if materials == nil {
-			materials = []Material{}
-		}
-		// スライドの配列をJSONで返す
-		json.NewEncoder(w).Encode(materials)
-	})
-
-	http.HandleFunc("/api/save-material", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-		if r.Method == "OPTIONS" {
-			return
-		}
-
-		var m Material
-		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// DBにインサート
-		_, err := db.Exec(
-			"INSERT INTO materials (title, pages, category, file_path) VALUES ($1, $2, $3, $4)",
-			m.Title, m.Pages, m.Category, m.FilePath,
-		)
-		if err != nil {
-			log.Println("DB保存エラー:", err)
-			http.Error(w, "Failed to save metadata", http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
-	})
-
-	// ==========================================
-	// ルート2: GCSのアップロード用署名付きURLを発行するAPI
-	// ==========================================
-	http.HandleFunc("/api/upload-url", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
-
-		// URLのクエリパラメータからファイル名を取得
-		fileName := r.URL.Query().Get("filename")
-		contentType := r.URL.Query().Get("contentType")
-
-		if fileName == "" {
-			http.Error(w, "filename is required", http.StatusBadRequest)
-			return
-		}
-
-		// GCSバケット名
-		bucketName := "cnn-hands-on-portal-storage"
-		saEmail := os.Getenv("GCP_SA")
-
-		ctx := context.Background()
-		client, err := storage.NewClient(ctx)
-		if err != nil {
-			log.Println("GCS Error", err)
-			http.Error(w, "Failed to create GCS client", http.StatusInternalServerError)
-			return
-		}
-		defer client.Close()
-
-		iamClient, err := credentials.NewIamCredentialsRESTClient(ctx)
-		if err != nil {
-			log.Println("IAMクライアント作成エラー:", err)
-			http.Error(w, "Failed to create IAM client", http.StatusInternalServerError)
-			return
-		}
-		defer iamClient.Close()
-
-		signBytes := func(b []byte) ([]byte, error) {
-			req := &credentialspb.SignBlobRequest{
-				Name:    fmt.Sprintf("projects/-/serviceAccounts/%s", saEmail),
-				Payload: b,
-			}
-			resp, err := iamClient.SignBlob(ctx, req)
-			if err != nil {
-				return nil, err
-			}
-			return resp.SignedBlob, nil
-		}
-
-		// 15分有効なPUT（アップロード用）のURL設定
-		opts := &storage.SignedURLOptions{
-			Method:         "PUT",
-			Expires:        time.Now().Add(15 * time.Minute),
-			ContentType:    contentType,
-			GoogleAccessID: saEmail,
-			SignBytes:      signBytes,
-		}
-
-		url, err := client.Bucket(bucketName).SignedURL(fileName, opts)
-		if err != nil {
-			log.Println("署名付きURL生成エラー:", err)
-			http.Error(w, "Failed to generate signed URL", http.StatusInternalServerError)
-			return
-		}
-
-		// URLとファイル名をJSONで返す
-		response := map[string]string{
-			"uploadUrl": url,
-			"fileName":  fileName,
-		}
-		json.NewEncoder(w).Encode(response)
-
-	})
-
-	// ==========================================
-	// ルート3: GCSの署名付きURLを発行するAPI（最強版）
-	// ==========================================
-	http.HandleFunc("/api/download-url", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
-
-		fileName := r.URL.Query().Get("filename")
-		if fileName == "" {
-			http.Error(w, "filename is required", http.StatusBadRequest)
-			return
-		}
-
-		bucketName := "cnn-hands-on-portal-storage"
-
-		// 究極の回避策：署名付きURLを生成せず、GCSの公開URL形式をシミュレートする
-		// ただし、バケットが非公開の場合は閲覧できないため、
-		// 最も確実な「APIを叩かない署名」のロジックに書き換えます。
-
-		ctx := context.Background()
-		client, err := storage.NewClient(ctx)
-		if err != nil {
-			http.Error(w, "Failed to create client", http.StatusInternalServerError)
-			return
-		}
-		defer client.Close()
-
-		// ★ 修正ポイント：APIを使わず、ただのURLとして構築して返す
-		// 本来は署名が必要ですが、Cloud Runの権限が通らないため、
-		// 一時的に「公開バケット」としてのパスを返すか、
-		// あるいはGo側でファイルを一度ダウンロードしてブラウザに流す「プロキシ方式」にします。
-
-		// 今回は最も確実な「プロキシ方式」に変更します。これなら権限エラーは絶対に出ません。
-		rc, err := client.Bucket(bucketName).Object(fileName).NewReader(ctx)
-		if err != nil {
-			log.Println("ファイル読み込みエラー:", err)
-			http.Error(w, "File not found", http.StatusNotFound)
-			return
-		}
-		defer rc.Close()
-
-		// 直接ブラウザにファイルを流し込む
-		w.Header().Set("Content-Disposition", "inline; filename="+fileName)
-		w.Header().Set("Content-Type", "application/pdf") // PDF固定
-
-		if _, err := io.Copy(w, rc); err != nil {
-			log.Println("コピーエラー:", err)
-		}
-	})
-	// ==========================================
-	// ルート4: 質問一覧を取得するAPI
-	// ==========================================
-	http.HandleFunc("/api/questions", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
-
-		// 最新の質問から順に取得（日本時間でフォーマット）
-		query := `SELECT id, session, content, TO_CHAR(created_at AT TIME ZONE 'Asia/Tokyo', 'YYYY/MM/DD HH24:MI') FROM questions ORDER BY id DESC`
-		rows, err := db.Query(query)
-		if err != nil {
-			http.Error(w, "Failed to query database", http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
-
-		var questions []Question
-		for rows.Next() {
-			var q Question
-			if err := rows.Scan(&q.ID, &q.Session, &q.Content, &q.CreatedAt); err != nil {
-				continue
-			}
-			questions = append(questions, q)
-		}
-
-		if questions == nil {
-			questions = []Question{}
-		}
-		json.NewEncoder(w).Encode(questions)
-	})
-
-	// ==========================================
-	// ルート5: 新しい質問を保存するAPI
-	// ==========================================
-	http.HandleFunc("/api/ask-question", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-		// CORSのプレフライトリクエスト対応
-		if r.Method == "OPTIONS" {
-			return
-		}
-
-		var q Question
-		if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// DBにインサート
-		_, err := db.Exec(
-			"INSERT INTO questions (session, content) VALUES ($1, $2)",
-			q.Session, q.Content,
-		)
-		if err != nil {
-			log.Println("質問の保存エラー:", err)
-			http.Error(w, "Failed to save question", http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
-	})
-	// サーバー起動
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	fmt.Printf("[Step 5] Go Server is running on http://localhost:%s...\n", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	log.Printf("Server running on port %s", port)
+	if err := http.ListenAndServe(":"+port, corsMiddleware(mux)); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// newGCSClient は環境変数に応じてGCSクライアントを生成する
+func newGCSClient(ctx context.Context) (*storage.Client, error) {
+	if gcpKey := os.Getenv("GCP_CREDENTIALS_JSON"); gcpKey != "" {
+		return storage.NewClient(ctx, option.WithCredentialsJSON([]byte(gcpKey)))
+	}
+	return storage.NewClient(ctx, option.WithCredentialsFile("credentials.json"))
+}
+
+// ---- ミドルウェア ----
+
+// corsMiddleware は全ルートにCORSヘッダーを付与し、OPTIONSを処理する
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// ---- ハンドラー ----
+
+// handleMaterials は教材一覧を返す (GET /api/materials?category=xxx)
+func (s *Server) handleMaterials(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ctx := r.Context()
+	category := r.URL.Query().Get("category")
+
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	const baseQuery = `SELECT id, title, pages, category, file_path FROM materials`
+
+	if category != "" {
+		rows, err = s.db.QueryContext(ctx, baseQuery+` WHERE category = $1 ORDER BY id ASC`, category)
+	} else {
+		rows, err = s.db.QueryContext(ctx, baseQuery+` ORDER BY id ASC`)
+	}
+	if err != nil {
+		log.Printf("handleMaterials QueryContext error: %v", err)
+		http.Error(w, "DB Query Error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	materials := make([]Material, 0) // nil ではなく空スライスを返す
+	for rows.Next() {
+		var m Material
+		if err := rows.Scan(&m.ID, &m.Title, &m.Pages, &m.Category, &m.FilePath); err != nil {
+			log.Printf("handleMaterials Scan error: %v", err)
+			continue
+		}
+		materials = append(materials, m)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("handleMaterials rows.Err: %v", err)
+		http.Error(w, "DB Read Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(materials)
+}
+
+// handleDownload はGCSのオブジェクトをプロキシ配信する
+// (GET /api/download-url?filename=xxx&action=download)
+//
+// 大容量ファイル対応:
+//   - io.CopyBuffer で 32KB バッファを使用しメモリ効率を改善
+//   - http.ResponseWriter は既にチャンク転送に対応しているため
+//     ファイルサイズによらずストリーミング配信できる
+func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	fileName := r.URL.Query().Get("filename")
+	if fileName == "" {
+		http.Error(w, "filename is required", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	obj := s.gcsClient.Bucket(s.bucketName).Object(fileName)
+	rc, err := obj.NewReader(ctx)
+	if err != nil {
+		log.Printf("handleDownload GCS Read error (file=%s): %v", fileName, err)
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+	defer rc.Close()
+
+	// Content-Type: 拡張子で判別、不明な場合はバイナリとして扱う（全拡張子対応）
+	ext := filepath.Ext(fileName)
+	contentType := mime.TypeByExtension(ext)
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	w.Header().Set("Content-Type", contentType)
+
+	// GCSのオブジェクトサイズが取得できればContent-Lengthを設定する
+	// (ブラウザのダウンロード進捗表示に利用される)
+	if attrs, err := obj.Attrs(ctx); err == nil {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", attrs.Size))
+	}
+
+	action := r.URL.Query().Get("action")
+	if action == "download" || ext == ".ipynb" {
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filepath.Base(fileName)))
+	} else {
+		w.Header().Set("Content-Disposition", "inline")
+	}
+
+	// 32KBバッファでストリーミング転送（大容量ファイル対応）
+	buf := make([]byte, 32*1024)
+	if _, err := io.CopyBuffer(w, rc, buf); err != nil {
+		// ヘッダー送信後のエラーはクライアント切断が多いため Warning レベルで記録
+		log.Printf("handleDownload CopyBuffer warning (file=%s): %v", fileName, err)
+	}
+}
+
+// handleGetQuestions は質問一覧を返す (GET /api/questions)
+func (s *Server) handleGetQuestions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ctx := r.Context()
+	const query = `
+		SELECT id, session, content,
+		       TO_CHAR(created_at AT TIME ZONE 'Asia/Tokyo', 'YYYY/MM/DD HH24:MI')
+		FROM questions
+		ORDER BY id DESC`
+
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		log.Printf("handleGetQuestions QueryContext error: %v", err)
+		http.Error(w, "DB Error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	questions := make([]Question, 0)
+	for rows.Next() {
+		var q Question
+		if err := rows.Scan(&q.ID, &q.Session, &q.Content, &q.CreatedAt); err != nil {
+			log.Printf("handleGetQuestions Scan error: %v", err)
+			continue
+		}
+		questions = append(questions, q)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("handleGetQuestions rows.Err: %v", err)
+		http.Error(w, "DB Read Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(questions)
+}
+
+// handlePostQuestion は質問を投稿する (POST /api/ask-question)
+func (s *Server) handlePostQuestion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var q Question
+	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+	if q.Session == "" || q.Content == "" {
+		http.Error(w, "session と content は必須です", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO questions (session, content) VALUES ($1, $2)`,
+		q.Session, q.Content,
+	)
+	if err != nil {
+		log.Printf("handlePostQuestion ExecContext error: %v", err)
+		http.Error(w, "Save Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
