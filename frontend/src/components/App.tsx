@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useSyncExternalStore, useMemo } from 'react';
+import React, { useState, useEffect, useSyncExternalStore, useMemo, useCallback, Suspense } from 'react';
 import { Show, SignInButton, UserButton, SignOutButton } from '@clerk/astro/react';
 import { $userStore } from '@clerk/astro/client';
 import { Sun, Moon, Settings, X, LogIn } from 'lucide-react';
+import { WelcomeSkeleton, SlidesSkeleton, ItemsSkeleton, QASkeleton } from './ui/Skeletons';
 
-// 切り出したタブをインポート
-import WelcomeTab from './tabs/WelcomeTab';
-import SlidesTab from './tabs/SlidesTab';
-import ItemsTab from './tabs/ItemsTab';
-import QATab from './tabs/QATab';
+// React.lazy による遅延ロード（タブ単位でコード分割）
+const WelcomeTab = React.lazy(() => import('./tabs/WelcomeTab'));
+const SlidesTab = React.lazy(() => import('./tabs/SlidesTab'));
+const ItemsTab = React.lazy(() => import('./tabs/ItemsTab'));
+const QATab = React.lazy(() => import('./tabs/QATab'));
 
 // --- 型定義 ---
 interface Tab { id: string; label: string; }
@@ -152,17 +153,17 @@ export default function App() {
     fetchTabData();
   }, [activeTab]);
 
-  const refreshItems = async () => {
+  const refreshItems = useCallback(async () => {
     const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=item`);
     const data = await res.json();
     setItems(data);
-  };
+  }, []);
 
-  const refreshQuestions = async () => {
+  const refreshQuestions = useCallback(async () => {
     const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/questions`);
     const data = await res.json();
     setQuestions(data);
-  };
+  }, []);
 
   return (
     <>
@@ -252,10 +253,26 @@ export default function App() {
               {/* --- Content Area --- */}
               <main className="flex-1 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-2xl overflow-y-auto">
                 <div className="p-4 sm:p-8 h-full">
-                  {activeTab === 'Tab1' && <WelcomeTab isLoading={isLoading} news={news} />}
-                  {activeTab === 'Tab2' && <SlidesTab isLoading={isLoading} slides={slides} />}
-                  {activeTab === 'Tab3' && <ItemsTab isAdmin={isAdmin} isLoading={isLoading} items={items} onUploadSuccess={refreshItems} />}
-                  {activeTab === 'Tab4' && <QATab isLoading={isLoading} questions={questions} onQuestionSubmit={refreshQuestions} />}
+                  {activeTab === 'Tab1' && (
+                    <Suspense fallback={<WelcomeSkeleton />}>
+                      <WelcomeTab isLoading={isLoading} news={news} />
+                    </Suspense>
+                  )}
+                  {activeTab === 'Tab2' && (
+                    <Suspense fallback={<SlidesSkeleton />}>
+                      <SlidesTab isLoading={isLoading} slides={slides} />
+                    </Suspense>
+                  )}
+                  {activeTab === 'Tab3' && (
+                    <Suspense fallback={<ItemsSkeleton />}>
+                      <ItemsTab isAdmin={isAdmin} isLoading={isLoading} items={items} onUploadSuccess={refreshItems} />
+                    </Suspense>
+                  )}
+                  {activeTab === 'Tab4' && (
+                    <Suspense fallback={<QASkeleton />}>
+                      <QATab isLoading={isLoading} questions={questions} onQuestionSubmit={refreshQuestions} />
+                    </Suspense>
+                  )}
                 </div>
               </main>
             </div>

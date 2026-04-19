@@ -12,7 +12,7 @@ interface WelcomeTabProps {
   isLoading: boolean;
 }
 
-export default function WelcomeTab({ news, isLoading }: WelcomeTabProps) {
+function WelcomeTab({ news, isLoading }: WelcomeTabProps) {
   return (
     <div className="h-full flex flex-col max-w-4xl mx-auto animate-fade-in pointer-events-auto">
       <div className="text-center py-4 sm:py-6 md:py-10 mb-4 sm:mb-8 border-b border-gray-100 dark:border-neutral-800">
@@ -51,3 +51,5 @@ export default function WelcomeTab({ news, isLoading }: WelcomeTabProps) {
     </div>
   );
 }
+
+export default React.memo(WelcomeTab);

@@ -15,7 +15,7 @@ interface ItemsTabProps {
   onUploadSuccess: () => Promise<void>;
 }
 
-export default function ItemsTab({ isAdmin = false, items, isLoading, onUploadSuccess }: ItemsTabProps) {
+function ItemsTab({ isAdmin = false, items, isLoading, onUploadSuccess }: ItemsTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState<string>("slide")
   const [title, setTitle] = useState("")
@@ -168,3 +168,5 @@ export default function ItemsTab({ isAdmin = false, items, isLoading, onUploadSu
     </div>
   );
 }
+
+export default React.memo(ItemsTab);

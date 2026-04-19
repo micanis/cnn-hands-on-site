@@ -15,7 +15,7 @@ interface SlidesTabProps {
   isLoading: boolean;
 }
 
-export default function SlidesTab({ slides, isLoading }: SlidesTabProps) {
+function SlidesTab({ slides, isLoading }: SlidesTabProps) {
 
   const handleAction = async (fileName: string, action: 'view' | 'download') => {
     if (!fileName) return;
@@ -95,3 +95,5 @@ export default function SlidesTab({ slides, isLoading }: SlidesTabProps) {
     </div>
   );
 }
+
+export default React.memo(SlidesTab);

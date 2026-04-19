@@ -14,7 +14,7 @@ interface QATabProps {
   onQuestionSubmit: () => Promise<void>;
 }
 
-export default function QATab({ questions, isLoading, onQuestionSubmit }: QATabProps) {
+function QATab({ questions, isLoading, onQuestionSubmit }: QATabProps) {
   const [session, setSession] = useState("全体的な質問");
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,3 +122,5 @@ export default function QATab({ questions, isLoading, onQuestionSubmit }: QATabP
     </div>
   );
 }
+
+export default React.memo(QATab);

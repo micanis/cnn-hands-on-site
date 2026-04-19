@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -10,7 +11,11 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/joho/godotenv"
@@ -60,6 +65,11 @@ func main() {
 	}
 	defer db.Close()
 
+	// コネクションプール設定（Neon サーバーレス DB 向け最適値）
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	if err := db.Ping(); err != nil {
 		log.Fatalf("DB接続(Ping)失敗: %v", err)
 	}
@@ -89,6 +99,8 @@ func main() {
 	// --- ルーティング ---
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/materials", srv.handleMaterials)
+	mux.HandleFunc("/api/save-material", srv.handleSaveMaterial)
+	mux.HandleFunc("/api/upload-url", srv.handleUploadURL)
 	mux.HandleFunc("/api/download-url", srv.handleDownload)
 	mux.HandleFunc("/api/questions", srv.handleGetQuestions)
 	mux.HandleFunc("/api/ask-question", srv.handlePostQuestion)
@@ -98,10 +110,39 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("Server running on port %s", port)
-	if err := http.ListenAndServe(":"+port, corsMiddleware(mux)); err != nil {
-		log.Fatal(err)
+	// --- Graceful Shutdown ---
+	httpServer := &http.Server{
+		Addr:         ":" + port,
+		Handler:      corsMiddleware(gzipMiddleware(mux)),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 60 * time.Second, // ダウンロードを考慮して長めに設定
+		IdleTimeout:  120 * time.Second,
 	}
+
+	// シグナルハンドリング用のcontext
+	shutdownCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// サーバーをバックグラウンドで起動
+	go func() {
+		log.Printf("Server running on port %s", port)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	// シグナルを待機
+	<-shutdownCtx.Done()
+	log.Println("シャットダウンシグナル受信、サーバーを停止中...")
+
+	// 最大10秒でグレースフルシャットダウン
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := httpServer.Shutdown(ctx); err != nil {
+		log.Printf("Graceful shutdown error: %v", err)
+	}
+	log.Println("サーバー停止完了")
 }
 
 // newGCSClient は環境変数に応じてGCSクライアントを生成する
@@ -125,6 +166,47 @@ func corsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+// gzipResponseWriter は http.ResponseWriter をラップし、gzip 圧縮を行う
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (grw gzipResponseWriter) Write(b []byte) (int, error) {
+	return grw.Writer.Write(b)
+}
+
+// gzipMiddleware はクライアントが gzip を受け入れる場合にレスポンスを圧縮する
+// ただしバイナリストリーミング（download-url）は除外する
+func gzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// ダウンロードエンドポイントは gzip をスキップ（既に大容量バイナリをストリーミングするため）
+		if strings.HasPrefix(r.URL.Path, "/api/download-url") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		defer gz.Close()
+
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Vary", "Accept-Encoding")
+		// gzip 圧縮するため Content-Length は不定になるので削除
+		w.Header().Del("Content-Length")
+
+		next.ServeHTTP(gzipResponseWriter{Writer: gz, ResponseWriter: w}, r)
 	})
 }
 
@@ -174,7 +256,77 @@ func (s *Server) handleMaterials(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=60") // 1分キャッシュ
 	json.NewEncoder(w).Encode(materials)
+}
+
+// handleSaveMaterial は教材のメタデータをDBに保存する (POST /api/save-material)
+func (s *Server) handleSaveMaterial(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var m Material
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+	if m.Title == "" || m.Category == "" || m.FilePath == "" {
+		http.Error(w, "title, category, file_path は必須です", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO materials (title, pages, category, file_path) VALUES ($1, $2, $3, $4)`,
+		m.Title, m.Pages, m.Category, m.FilePath,
+	)
+	if err != nil {
+		log.Printf("handleSaveMaterial ExecContext error: %v", err)
+		http.Error(w, "Save Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+// handleUploadURL はGCSへの署名付きアップロードURLを発行する (GET /api/upload-url?filename=xxx&contentType=xxx)
+func (s *Server) handleUploadURL(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	fileName := r.URL.Query().Get("filename")
+	contentType := r.URL.Query().Get("contentType")
+	if fileName == "" {
+		http.Error(w, "filename is required", http.StatusBadRequest)
+		return
+	}
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	// 署名付きURL（PUT用）を発行する（15分間有効）
+	opts := &storage.SignedURLOptions{
+		Scheme:      storage.SigningSchemeV4,
+		Method:      "PUT",
+		Expires:     time.Now().Add(15 * time.Minute),
+		ContentType: contentType,
+	}
+
+	url, err := s.gcsClient.Bucket(s.bucketName).SignedURL(fileName, opts)
+	if err != nil {
+		log.Printf("handleUploadURL SignedURL error: %v", err)
+		http.Error(w, "Failed to generate upload URL", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"uploadUrl": url})
 }
 
 // handleDownload はGCSのオブジェクトをプロキシ配信する
@@ -214,10 +366,9 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 
-	// GCSのオブジェクトサイズが取得できればContent-Lengthを設定する
-	// (ブラウザのダウンロード進捗表示に利用される)
-	if attrs, err := obj.Attrs(ctx); err == nil {
-		w.Header().Set("Content-Length", fmt.Sprintf("%d", attrs.Size))
+	// NewReader の Attrs からサイズを取得（obj.Attrs() への追加ラウンドトリップを回避）
+	if rc.Attrs.Size > 0 {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", rc.Attrs.Size))
 	}
 
 	action := r.URL.Query().Get("action")
@@ -226,6 +377,9 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("Content-Disposition", "inline")
 	}
+
+	// ファイルは変わりにくいため長めにキャッシュ
+	w.Header().Set("Cache-Control", "public, max-age=3600")
 
 	// 32KBバッファでストリーミング転送（大容量ファイル対応）
 	buf := make([]byte, 32*1024)
@@ -273,6 +427,8 @@ func (s *Server) handleGetQuestions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	// 質問は即時反映が必要なためキャッシュしない
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	json.NewEncoder(w).Encode(questions)
 }
 
