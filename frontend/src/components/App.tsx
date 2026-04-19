@@ -142,8 +142,8 @@ export default function App() {
                         <button key={tab.id} onClick={() => setActiveTab(tab.id)}
   className={`relative px-4 sm:px-10 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap cursor-pointer [-webkit-tap-highlight-color:transparent]
     ${index !== 0 ? '-ml-3 sm:-ml-5' : ''}
-    ${isActive ? `z-20 ${getTabActiveColor(tab.id)} text-gray-900 dark:text-white border border-white/60 dark:border-white/10` 
-               : `text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-white/10 border border-transparent`}
+    ${isActive ? `z-20 ${getTabActiveColor(tab.id)} text-gray-900 dark:text-white` 
+               : `text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200`}
   `}
   style={{ 
     zIndex: isActive ? 20 : 10 - index,
