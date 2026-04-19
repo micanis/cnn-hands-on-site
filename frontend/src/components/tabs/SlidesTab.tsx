@@ -1,32 +1,27 @@
 // frontend/src/components/tabs/SlidesTab.tsx
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 interface Material {
   id: number;
   title: string;
-  pages: number;
+  pages?: number;
   category: string;
   file_path: string;
 }
 
-export default function SlidesTab() {
-  const [slides, setSlides] = useState<Material[]>([]);
+interface SlidesTabProps {
+  slides: Material[] | null;
+  isLoading: boolean;
+}
 
-  useEffect(() => {
-    // カテゴリを 'slide' に指定して取得
-    fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=slide`)
-      .then(res => res.json())
-      .then(data => setSlides(data))
-      .catch(err => console.error("API Error:", err));
-  }, []);
+export default function SlidesTab({ slides, isLoading }: SlidesTabProps) {
 
   const handleAction = async (fileName: string, action: 'view' | 'download') => {
     if (!fileName) return;
     try {
       // Go APIを叩いて署名付きURLを取得
-      const res = `${import.meta.env.PUBLIC_API_URL}/api/download-url?filename=${fileName}&action=view&action=${action}`
-      // const data = await res.json();
+      const res = `${import.meta.env.PUBLIC_API_URL}/api/download-url?filename=${fileName}&action=${action}`
       
       if (action === 'view') {
         // 閲覧: そのまま別タブで開く（ブラウザのビューワーに任せる）
@@ -62,8 +57,9 @@ export default function SlidesTab() {
   return (
     <div className="h-full max-w-4xl mx-auto animate-fade-in pointer-events-auto">
       <h2 className="text-2xl font-bold mb-6 dark:text-white">講義スライド</h2>
+      {isLoading && <p className="text-gray-500 text-sm animate-pulse">スライドを読み込み中...</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {slides.map(slide => (
+        {slides && slides.map(slide => (
           <div key={slide.id} className="p-5 rounded-xl border border-gray-200 dark:border-neutral-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors bg-white dark:bg-neutral-800/50 flex flex-col group">
             <div className="flex-1">
               <span className="text-sm font-bold text-blue-500 mb-2 inline-block">Slide</span>
@@ -90,6 +86,9 @@ export default function SlidesTab() {
           </div>
         ))}
       </div>
+      {!isLoading && slides?.length === 0 && (
+        <p className="text-gray-500 text-sm text-center py-8">公開中のスライドはありません。</p>
+      )}
     </div>
   );
 }

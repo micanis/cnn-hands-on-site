@@ -1,9 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Upload, Download, Loader2, } from 'lucide-react';
-
-interface ItemsTabProps {
-  isAdmin?: boolean
-}
 
 interface Material {
     id: number
@@ -12,13 +8,19 @@ interface Material {
     file_path: string
 }
 
-export default function ItemsTab({isAdmin = false}: ItemsTabProps) {
+interface ItemsTabProps {
+  isAdmin?: boolean;
+  items: Material[] | null;
+  isLoading: boolean;
+  onUploadSuccess: () => Promise<void>;
+}
+
+export default function ItemsTab({ isAdmin = false, items, isLoading, onUploadSuccess }: ItemsTabProps) {
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState<string>("slide")
   const [title, setTitle] = useState("")
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState("");
-  const [items, setItems] = useState<Material[]>([])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -26,19 +28,10 @@ export default function ItemsTab({isAdmin = false}: ItemsTabProps) {
     }
   };
 
-  useEffect(() => {
-    fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=item`)
-        .then(res => res.json())
-        .then(data => setItems(data))
-        .catch(err => console.error("API Error:", err))
-  }, [])
-
   const handleDownload = async (fileName: string) => {
     if (!fileName) return
     try {
         const res = `${import.meta.env.PUBLIC_API_URL}/api/download-url?filename=${fileName}&action=view`
-        // const data = await res.json();
-
         window.open(res, '_blank')
     } catch (err) {
         console.error("download error:", err)
@@ -75,6 +68,7 @@ export default function ItemsTab({isAdmin = false}: ItemsTabProps) {
 
       setMessage("公開リストへの登録が完了しました！");
       setFile(null); setTitle("");
+      onUploadSuccess(); // 親コンポーネントに更新を通知
     } catch (err) {
       console.error(err);
       setMessage("エラーが発生しました。");
@@ -142,13 +136,12 @@ export default function ItemsTab({isAdmin = false}: ItemsTabProps) {
         </div>
       </div>
       )}
-      {/* アップロードセクション（管理者/自分用） */}
       
-
       {/* 配布済みアイテムリスト */}
       <h3 className="text-lg font-bold mb-4 dark:text-gray-200 mt-8">公開中のアイテム</h3>
+      {isLoading && <p className="text-gray-500 text-sm animate-pulse">アイテムを読み込み中...</p>}
       <div className="space-y-4">
-        {items.map(item => (
+        {items && items.map(item => (
           <div key={item.id} className="p-5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/50 flex justify-between items-center group hover:border-blue-300 transition-colors">
             <div>
               <h4 className="font-bold dark:text-white text-lg">{item.title}</h4>
@@ -164,7 +157,7 @@ export default function ItemsTab({isAdmin = false}: ItemsTabProps) {
           </div>
         ))}
         
-        {items.length === 0 && (
+        {!isLoading && items?.length === 0 && (
           <p className="text-gray-500 text-sm text-center py-8">公開中のアイテムはありません。</p>
         )}
       </div>

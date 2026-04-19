@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MessageSquare, Send, Loader2 } from 'lucide-react';
 
 interface Question {
@@ -8,24 +8,16 @@ interface Question {
   created_at: string;
 }
 
-export default function QATab() {
-  const [questions, setQuestions] = useState<Question[]>([]);
+interface QATabProps {
+  questions: Question[] | null;
+  isLoading: boolean;
+  onQuestionSubmit: () => Promise<void>;
+}
+
+export default function QATab({ questions, isLoading, onQuestionSubmit }: QATabProps) {
   const [session, setSession] = useState("全体的な質問");
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 質問一覧を取得する関数
-  const fetchQuestions = () => {
-    fetch(`${import.meta.env.PUBLIC_API_URL}/api/questions`)
-      .then(res => res.json())
-      .then(data => setQuestions(data))
-      .catch(err => console.error("API Error:", err));
-  };
-
-  // 初回マウント時に質問を取得
-  useEffect(() => {
-    fetchQuestions();
-  }, []);
 
   // 質問を送信する処理
   const handleSubmit = async () => {
@@ -41,7 +33,7 @@ export default function QATab() {
 
       if (res.ok) {
         setContent(""); // 入力欄をクリア
-        fetchQuestions(); // 最新のリストを再取得して画面を更新
+        onQuestionSubmit(); // 親コンポーネントに更新を通知
       } else {
         alert("送信に失敗しました。");
       }
@@ -104,10 +96,9 @@ export default function QATab() {
         <MessageSquare className="w-5 h-5 text-orange-500" />
         みんなの質問
       </h3>
+      {isLoading && <p className="text-gray-500 text-sm animate-pulse">質問を読み込み中...</p>}
       <div className="space-y-4">
-        {questions.length === 0 ? (
-          <p className="text-gray-500 text-sm text-center py-8">まだ質問はありません。</p>
-        ) : (
+        {questions && questions.length > 0 ? (
           questions.map((q) => (
             <div key={q.id} className="p-5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 flex flex-col gap-3">
               <div className="flex justify-between items-center border-b border-gray-100 dark:border-neutral-700 pb-2">
@@ -121,6 +112,8 @@ export default function QATab() {
               </p>
             </div>
           ))
+        ) : !isLoading && (
+          <p className="text-gray-500 text-sm text-center py-8">まだ質問はありません。</p>
         )}
       </div>
     </div>

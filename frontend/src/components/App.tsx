@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useSyncExternalStore, useMemo } from 'react';
 import { Show, SignInButton, UserButton, SignOutButton } from '@clerk/astro/react';
 import { $userStore } from '@clerk/astro/client';
 import { Sun, Moon, Settings, X, LogIn } from 'lucide-react';
@@ -12,6 +12,28 @@ import QATab from './tabs/QATab';
 // --- 型定義 ---
 interface Tab { id: string; label: string; }
 
+// 各タブで使われるデータモデルの型定義
+interface Material {
+  id: number;
+  title: string;
+  pages?: number;
+  category: string;
+  file_path: string;
+}
+
+interface Question {
+  id: number;
+  session: string;
+  content: string;
+  created_at: string;
+}
+
+interface NewsItem {
+  date: string;
+  text: string;
+  tag: string;
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (typeof window !== 'undefined') {
@@ -22,6 +44,13 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
+  // --- データキャッシュ用のState ---
+  const [isLoading, setIsLoading] = useState(false);
+  const [news, setNews] = useState<NewsItem[] | null>(null);
+  const [slides, setSlides] = useState<Material[] | null>(null);
+  const [items, setItems] = useState<Material[] | null>(null);
+  const [questions, setQuestions] = useState<Question[] | null>(null);
+
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab)
   }, [activeTab])
@@ -29,35 +58,29 @@ export default function App() {
   const user = useSyncExternalStore($userStore.listen, $userStore.get, $userStore.get);
   const userEmail = user?.primaryEmailAddress?.emailAddress || ""
 
-  const adminEmails = JSON.parse(import.meta.env.PUBLIC_ADMIN_EMAILS || "[]")
-  console.log(adminEmails)
-  const isAdmin = adminEmails.includes(userEmail)
+  const isAdmin = useMemo(() => {
+    if (!userEmail) return false;
+    const adminEmails = JSON.parse(import.meta.env.PUBLIC_ADMIN_EMAILS || "[]");
+    return adminEmails.includes(userEmail);
+  }, [userEmail]);
 
-  const isAllowedUser = () => {
-    if (!userEmail) return false
+  const isAllowed = useMemo(() => {
+    if (!userEmail) return false;
+    if (isAdmin) return true;
 
-    if (isAdmin) return true
-
-    const guestEmails = JSON.parse(import.meta.env.PUBLIC_GUEST_EMAILS || "[]")
-    if (guestEmails.includes(userEmail)) return true
+    const guestEmails = JSON.parse(import.meta.env.PUBLIC_GUEST_EMAILS || "[]");
+    if (guestEmails.includes(userEmail)) return true;
 
     const domains: string[] = JSON.parse(
       import.meta.env.PUBLIC_ALLOWED_DOMAINS || "[]"
     );
+    if (domains.length === 0) return false;
 
-    const escapedDomains = domains.map((d) =>
-      d.replace(/\./g, "\\.")
-    );
-
-    const studentPattern: RegExp = new RegExp(
-      `^[a-zA-Z0-9_.+-]+@(${escapedDomains.join("|")})$`
-    );
-    if (studentPattern.test(userEmail)) return true
-
-    return false
-  }
-
-  const isAllowed = isAllowedUser()
+    const escapedDomains = domains.map((d) => d.replace(/\./g, "\\."));
+    const studentPattern = new RegExp(`^[a-zA-Z0-9_.+-]+@(${escapedDomains.join("|")})$`);
+    
+    return studentPattern.test(userEmail);
+  }, [userEmail, isAdmin]);
 
   const tabs: Tab[] = [
     { id: 'Tab1', label: 'Home' },
@@ -65,6 +88,81 @@ export default function App() {
     { id: 'Tab3', label: 'Items' },
     { id: 'Tab4', label: 'Q&A' }
   ];
+
+  // --- データ取得ロジック ---
+  useEffect(() => {
+    const fetchTabData = async () => {
+      // 対応するデータがキャッシュにない場合のみローディング状態にする
+      const isDataCached = 
+        (activeTab === 'Tab1' && news !== null) ||
+        (activeTab === 'Tab2' && slides !== null) ||
+        (activeTab === 'Tab3' && items !== null) ||
+        (activeTab === 'Tab4' && questions !== null);
+
+      if (isDataCached) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        switch (activeTab) {
+          case 'Tab1':
+            if (news === null) {
+              const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials`);
+              const data: Material[] = await res.json();
+              const latestMaterials = [...data].reverse().slice(0, 3);
+              const generatedNews = latestMaterials.map(item => ({
+                date: "New",
+                text: `新しい${item.category === 'slide' ? 'スライド' : 'アイテム'}「${item.title}」が公開されました。`,
+                tag: item.category === 'slide' ? 'Slides' : 'Items'
+              }));
+              setNews(generatedNews);
+            }
+            break;
+          case 'Tab2':
+            if (slides === null) {
+              const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=slide`);
+              const data = await res.json();
+              setSlides(data);
+            }
+            break;
+          case 'Tab3':
+            if (items === null) {
+              const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=item`);
+              const data = await res.json();
+              setItems(data);
+            }
+            break;
+          case 'Tab4':
+            if (questions === null) {
+              const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/questions`);
+              const data = await res.json();
+              setQuestions(data);
+            }
+            break;
+        }
+      } catch (error) {
+        console.error("Failed to fetch tab data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTabData();
+  }, [activeTab]);
+
+  const refreshItems = async () => {
+    const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=item`);
+    const data = await res.json();
+    setItems(data);
+  };
+
+  const refreshQuestions = async () => {
+    const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/questions`);
+    const data = await res.json();
+    setQuestions(data);
+  };
 
   return (
     <>
@@ -154,10 +252,10 @@ export default function App() {
               {/* --- Content Area --- */}
               <main className="flex-1 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-2xl overflow-y-auto">
                 <div className="p-4 sm:p-8 h-full">
-                  <div className={`h-full ${activeTab === 'Tab1' ? 'block' : 'hidden'}`}><WelcomeTab /></div>
-                  <div className={`h-full ${activeTab === 'Tab2' ? 'block' : 'hidden'}`}><SlidesTab /></div>
-                  <div className={`h-full ${activeTab === 'Tab3' ? 'block' : 'hidden'}`}><ItemsTab isAdmin={isAdmin}/></div>
-                  <div className={`h-full ${activeTab === 'Tab4' ? 'block' : 'hidden'}`}><QATab /></div>
+                  {activeTab === 'Tab1' && <WelcomeTab isLoading={isLoading} news={news} />}
+                  {activeTab === 'Tab2' && <SlidesTab isLoading={isLoading} slides={slides} />}
+                  {activeTab === 'Tab3' && <ItemsTab isAdmin={isAdmin} isLoading={isLoading} items={items} onUploadSuccess={refreshItems} />}
+                  {activeTab === 'Tab4' && <QATab isLoading={isLoading} questions={questions} onQuestionSubmit={refreshQuestions} />}
                 </div>
               </main>
             </div>

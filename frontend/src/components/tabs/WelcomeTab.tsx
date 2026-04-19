@@ -1,47 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
-// DBから取得するデータの型
-interface Material {
-  id: number;
-  title: string;
-  category: string;
-}
-
-// ニュース表示用の型
+// App.tsxから渡されるpropsの型
 interface NewsItem {
   date: string;
   text: string;
   tag: string;
 }
 
-export default function WelcomeTab() {
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+interface WelcomeTabProps {
+  news: NewsItem[] | null;
+  isLoading: boolean;
+}
 
-  useEffect(() => {
-    // 全資料を取得
-    fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials`)
-      .then(res => res.json())
-      .then((data: Material[]) => {
-        // IDが大きい順（新しい順）に並べ替え、最新の3件だけを取得
-        const latestMaterials = [...data].reverse().slice(0, 3);
-        
-        // ニュースの形式に変換
-        const generatedNews = latestMaterials.map(item => ({
-          date: "New", // 必要に応じてDBのcreated_at等に置き換え可能
-          text: `新しい${item.category === 'slide' ? 'スライド' : 'アイテム'}「${item.title}」が公開されました。`,
-          tag: item.category === 'slide' ? 'Slides' : 'Items'
-        }));
-        
-        setNews(generatedNews);
-        setIsLoading(false);
-      })
-      .catch(err => {
-        console.error("News fetch error:", err);
-        setIsLoading(false);
-      });
-  }, []);
-
+export default function WelcomeTab({ news, isLoading }: WelcomeTabProps) {
   return (
     <div className="h-full flex flex-col max-w-4xl mx-auto animate-fade-in pointer-events-auto">
       <div className="text-center py-6 sm:py-10 mb-8 border-b border-gray-100 dark:border-neutral-800">
@@ -58,7 +29,7 @@ export default function WelcomeTab() {
         <div className="space-y-3">
           {isLoading ? (
             <p className="text-gray-500 text-sm animate-pulse">最新情報を読み込み中...</p>
-          ) : news.length > 0 ? (
+          ) : news && news.length > 0 ? (
             news.map((item, i) => (
               <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-2 p-4 rounded-xl bg-gray-50 dark:bg-neutral-800/50 border border-transparent hover:border-pink-200 dark:hover:border-pink-900/30 transition-colors">
                 <span className="text-sm font-mono text-pink-500 font-bold w-12">{item.date}</span>
