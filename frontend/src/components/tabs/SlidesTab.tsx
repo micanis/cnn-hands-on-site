@@ -56,7 +56,10 @@ export default function SlidesTab({ slides, isLoading }: SlidesTabProps) {
 
   return (
     <div className="h-full max-w-4xl mx-auto animate-fade-in pointer-events-auto">
-      <h2 className="text-2xl font-bold mb-6 dark:text-white">講義スライド</h2>
+      <h2 className="text-2xl font-bold mb-6 dark:text-white flex items-center gap-3">
+        <span className="w-2 h-7 bg-blue-500 rounded-full inline-block" />
+        講義スライド
+      </h2>
       {isLoading && <p className="text-gray-500 text-sm animate-pulse">スライドを読み込み中...</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {slides && slides.map(slide => (

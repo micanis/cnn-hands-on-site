@@ -16,9 +16,11 @@ export default function WelcomeTab({ news, isLoading }: WelcomeTabProps) {
   return (
     <div className="h-full flex flex-col max-w-4xl mx-auto animate-fade-in pointer-events-auto">
       <div className="text-center py-6 sm:py-10 mb-8 border-b border-gray-100 dark:border-neutral-800">
-        <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-4 text-gray-900 dark:text-white leading-tight">
-          CNNを用いた画像認識の<br />仕組みと実装へようこそ
-        </h1>
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-tight">
+            CNNを用いた画像認識の仕組みと実装<br />へようこそ
+          </h1>
+        </div>
       </div>
       
       <div>

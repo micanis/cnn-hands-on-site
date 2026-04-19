@@ -47,11 +47,14 @@ export default function QATab({ questions, isLoading, onQuestionSubmit }: QATabP
 
   return (
     <div className="h-full max-w-3xl mx-auto flex flex-col animate-fade-in pointer-events-auto pb-10">
-      <h2 className="text-2xl font-bold mb-2 dark:text-white">質問箱</h2>
+      <h2 className="text-2xl font-bold mb-2 dark:text-white flex items-center gap-3">
+        <span className="w-2 h-7 bg-orange-500 rounded-full inline-block" />
+        質問箱
+      </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">講義内容やコードの実装に関する質問を匿名で送信できます。</p>
       
       {/* 投稿フォーム */}
-      <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-xl p-6 border border-gray-100 dark:border-neutral-700 mb-10 shadow-sm">
+      <div className="bg-orange-50/40 dark:bg-neutral-800/50 rounded-xl p-6 border border-orange-100/70 dark:border-orange-900/40 mb-10 shadow-sm">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">関連するセッション</label>
@@ -100,7 +103,7 @@ export default function QATab({ questions, isLoading, onQuestionSubmit }: QATabP
       <div className="space-y-4">
         {questions && questions.length > 0 ? (
           questions.map((q) => (
-            <div key={q.id} className="p-5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 flex flex-col gap-3">
+            <div key={q.id} className="p-5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 flex flex-col gap-3 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
               <div className="flex justify-between items-center border-b border-gray-100 dark:border-neutral-700 pb-2">
                 <span className="text-xs font-bold px-2 py-1 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
                   {q.session}
