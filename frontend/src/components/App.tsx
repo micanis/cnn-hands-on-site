@@ -11,8 +11,6 @@ import QATab from './tabs/QATab';
 
 // --- 型定義 ---
 interface Tab { id: string; label: string; }
-interface BgArea { id: string; targetTab: string; tabActiveColor: string; bgClass: string; hoverClass: string; borderClass: string; positionClass: string; pulseColor: string; }
-interface BgPulseInfo { area: string | null; color: string; }
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -23,7 +21,6 @@ export default function App() {
   })
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [bgPulseInfo, setBgPulseInfo] = useState<BgPulseInfo>({ area: null, color: '' });
 
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab)
@@ -69,30 +66,20 @@ export default function App() {
     { id: 'Tab4', label: 'Q&A' }
   ];
 
-  const bgAreas: BgArea[] = [
-    { id: '左上', targetTab: 'Tab1', tabActiveColor: 'bg-pink-200 dark:bg-pink-900', bgClass: 'bg-pink-50 dark:bg-[#1a1114]', hoverClass: 'hover:bg-pink-100 dark:hover:bg-[#2a1b20]', borderClass: 'border-r border-b border-gray-200 dark:border-gray-800', positionClass: 'items-start justify-start', pulseColor: 'bg-pink-200' },
-    { id: '右上', targetTab: 'Tab2', tabActiveColor: 'bg-blue-200 dark:bg-blue-900', bgClass: 'bg-blue-50 dark:bg-[#11161f]', hoverClass: 'hover:bg-blue-100 dark:hover:bg-[#1a2333]', borderClass: 'border-b border-gray-200 dark:border-gray-800', positionClass: 'items-start justify-end', pulseColor: 'bg-blue-200' },
-    { id: '左下', targetTab: 'Tab3', tabActiveColor: 'bg-emerald-200 dark:bg-emerald-900', bgClass: 'bg-emerald-50 dark:bg-[#111a14]', hoverClass: 'hover:bg-emerald-100 dark:hover:bg-[#192b1f]', borderClass: 'border-r border-gray-200 dark:border-gray-800', positionClass: 'items-end justify-start', pulseColor: 'bg-emerald-200' },
-    { id: '右下', targetTab: 'Tab4', tabActiveColor: 'bg-orange-200 dark:bg-orange-900', bgClass: 'bg-orange-50 dark:bg-[#1f1611]', hoverClass: 'hover:bg-orange-100 dark:hover:bg-[#332219]', borderClass: '', positionClass: 'items-end justify-end', pulseColor: 'bg-orange-200' }
-  ];
-
-  const getTabActiveColor = (tabId: string) => bgAreas.find(a => a.targetTab === tabId)?.tabActiveColor || 'bg-gray-200';
-
-  const handleBgClick = (area: BgArea) => {
-    setActiveTab(area.targetTab);
-    setBgPulseInfo({ area: area.id, color: area.pulseColor });
-    setTimeout(() => setBgPulseInfo({ area: null, color: '' }), 500);
-  };
-
   return (
     <>
       <Show when="signed-out">
-        <div className={`w-full h-screen flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'dark bg-neutral-900' : 'bg-gray-50'}`}>
-          <div className="bg-white dark:bg-neutral-800 p-10 rounded-3xl shadow-xl border border-gray-100 dark:border-neutral-700 max-w-md w-full text-center animate-fade-in">
-            <LogIn className="w-12 h-12 text-blue-600 mx-auto mb-6" />
-            <h1 className="text-2xl font-bold mb-8 dark:text-white">Class Portal</h1>
+        <div className={`w-full h-screen flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'dark bg-neutral-950' : 'bg-gray-100'}`}>
+          <div className="bg-white dark:bg-neutral-900/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-gray-200 dark:border-neutral-800 max-w-md w-full text-center animate-fade-in">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gray-200 dark:bg-neutral-800 flex items-center justify-center">
+              <LogIn className="w-8 h-8 text-gray-600 dark:text-gray-400" />
+            </div>
+            <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Class Portal</h1>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">Sign in to continue</p>
             <SignInButton mode="modal">
-              <button className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl cursor-pointer">Googleでログイン</button>
+              <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl cursor-pointer transition-colors">
+                Sign in with Google
+              </button>
             </SignInButton>
           </div>
         </div>
@@ -100,120 +87,117 @@ export default function App() {
 
       <Show when="signed-in">
         {!isAllowed ? (
-          <div className={`w-full h-screen flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'dark bg-neutral-900' : 'bg-gray-50'}`}>
-            <div className="bg-white dark:bg-neutral-800 p-10 rounded-3xl shadow-xl border border-gray-100 dark:border-neutral-700 max-w-md w-full text-center animate-fade-in">
-              <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">🔒</div>
-              <h1 className="text-2xl font-bold mb-4 dark:text-white">アクセスが制限されています</h1>
+          <div className={`w-full h-screen flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'dark bg-neutral-950' : 'bg-gray-100'}`}>
+            <div className="bg-white dark:bg-neutral-900/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-gray-200 dark:border-neutral-800 max-w-md w-full text-center animate-fade-in">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
+                🔒
+              </div>
+              <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Access Restricted</h1>
               <p className="text-gray-500 dark:text-gray-400 text-sm mb-8 leading-relaxed">
-                申し訳ありませんが、このアカウント（<span className="font-bold text-gray-700 dark:text-gray-200">{userEmail}</span>）にはクラスポータルへのアクセス権が付与されていません。<br/><br/>
-                大学発行のメールアドレスで再度ログインをお試しください。
+                Sorry, the account <span className="font-semibold text-gray-700 dark:text-gray-200">{userEmail}</span> is not authorized to access this portal.
+                <br/><br/>
+                Please try again with your university-issued email address.
               </p>
               <SignOutButton>
-                <button className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl cursor-pointer">
-                  別のアカウントでログイン
+                <button className="w-full py-3 bg-gray-800 hover:bg-gray-900 dark:bg-gray-200 dark:hover:bg-white text-white dark:text-gray-900 font-bold rounded-xl cursor-pointer transition-colors">
+                  Sign in with a different account
                 </button>
               </SignOutButton>
             </div>
           </div>
         ) : (
-        <div className={`w-full h-screen relative overflow-hidden transition-colors duration-300 select-none ${isDarkMode ? 'dark' : ''}`}>
-          <div className="absolute inset-0 bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200">
-            {/* 背景エリア */}
-            <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
-              {bgAreas.map((area) => (
-                <div key={area.id} onClick={() => handleBgClick(area)} className={`${area.bgClass} ${area.hoverClass} ${area.borderClass} ${area.positionClass} p-8 flex cursor-pointer transition-colors duration-300 relative overflow-hidden`}>
-                  <span className="text-xl tracking-wide font-medium opacity-20 dark:opacity-10">{tabs.find(t => t.id === area.targetTab)?.label}</span>
-                  {bgPulseInfo.area === area.id && <div className="absolute inset-0 bg-white/40 animate-ping rounded-full scale-150" />}
-                </div>
-              ))}
-            </div>
-
-            {/* パネル */}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-4">
-              <div className="pointer-events-auto w-[95vw] sm:w-[80vw] h-[90vh] sm:h-[80vh] max-w-[1200px] bg-neutral-100 dark:bg-neutral-800 rounded-xl shadow-2xl p-3 sm:p-4 flex flex-col border border-transparent dark:border-neutral-700">
-                
-                {/* ヘッダー */}
-                <div className="flex items-center justify-between mb-4 mt-1 relative z-10">
-                  <div className="w-24 hidden sm:block"></div>
-                  <div className="bg-gray-200/70 dark:bg-neutral-900/50 backdrop-blur-md rounded-full flex p-1.5 shadow-inner border border-gray-300/30 dark:border-neutral-700/50 overflow-x-auto">
-                    {tabs.map((tab, index) => {
-                      const isActive = activeTab === tab.id;
-                      return (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-  className={`relative px-4 sm:px-10 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap cursor-pointer [-webkit-tap-highlight-color:transparent]
-    ${index !== 0 ? '-ml-3 sm:-ml-5' : ''}
-    ${isActive ? `z-20 ${getTabActiveColor(tab.id)} text-gray-900 dark:text-white` 
-               : `text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200`}
-  `}
-  style={{ 
-    zIndex: isActive ? 20 : 10 - index,
-    outline: 'none',        /* ここを追加：アウトラインを完全に消す */
-    boxShadow: isActive ? '0 4px 10px -2px rgba(0,0,0,0.15)' : 'none', /* ここを追加：アクティブ時以外のシャドウを消す */
-  }}>
-  {tab.label}
-</button>
-                      );
-                    })}
+        <div className={`w-full h-screen overflow-hidden transition-colors duration-300 select-none font-sans ${isDarkMode ? 'dark' : ''}`}>
+          <div className="bg-gray-100 dark:bg-black h-full">
+            <div className="max-w-6xl mx-auto h-full p-4 flex flex-col gap-4">
+              {/* --- Header --- */}
+              <header className="flex-shrink-0 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-2xl px-4 py-3">
+                <div className="flex items-center justify-center relative">
+                  {/* タブ */}
+                  <div className="bg-gray-200/70 dark:bg-neutral-800/70 p-1.5 rounded-2xl flex items-center relative w-4/5 max-w-lg">
+                    {/* アクティブタブのインジケーター */}
+                    <div
+                      className={`absolute top-1.5 bottom-1.5 bg-white dark:bg-neutral-700 rounded-xl shadow-md transition-all duration-300 ease-in-out`}
+                      style={{
+                        width: `calc((100% - 2 * 0.375rem) / ${tabs.length})`,
+                        left: `calc(0.375rem + ${tabs.findIndex(tab => tab.id === activeTab)} * ((100% - 2 * 0.375rem) / ${tabs.length}))`,
+                      }}
+                    />
+                    {tabs.map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`relative z-10 w-full py-2 text-sm font-semibold rounded-xl transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-black ${
+                          activeTab === tab.id
+                            ? 'text-gray-900 dark:text-white'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex gap-2 w-auto sm:w-24 justify-end pr-2">
-                    <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-full bg-white dark:bg-neutral-700 cursor-pointer shadow-sm">
+
+                  {/* コントロール */}
+                  <div className="absolute right-4 flex items-center gap-3">
+                    <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-neutral-800 transition-colors">
                       {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                     </button>
-                    <button onClick={() => setIsSettingsOpen(true)} className="p-2.5 rounded-full bg-white dark:bg-neutral-700 cursor-pointer shadow-sm">
+                    <button onClick={() => setIsSettingsOpen(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-neutral-800 transition-colors">
                       <Settings className="w-5 h-5" />
                     </button>
+                    <div className="w-px h-6 bg-gray-200 dark:bg-neutral-700"></div>
+                    <UserButton />
                   </div>
                 </div>
+              </header>
 
-                {/* コンテンツエリア */}
-                <div className="flex-1 bg-white dark:bg-neutral-900 rounded-lg shadow-sm border border-gray-100 dark:border-neutral-800 overflow-y-auto">
-                  <div className="p-4 sm:p-8 h-full">
-                    <div className={`h-full ${activeTab === 'Tab1' ? 'block' : 'hidden'}`}><WelcomeTab /></div>
-                    <div className={`h-full ${activeTab === 'Tab2' ? 'block' : 'hidden'}`}><SlidesTab /></div>
-                    <div className={`h-full ${activeTab === 'Tab3' ? 'block' : 'hidden'}`}>
-                      <ItemsTab isAdmin={isAdmin}/>
-                      </div>
-                    <div className={`h-full ${activeTab === 'Tab4' ? 'block' : 'hidden'}`}><QATab /></div>
+              {/* --- Content Area --- */}
+              <main className="flex-1 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-2xl overflow-y-auto">
+                <div className="p-4 sm:p-8 h-full">
+                  <div className={`h-full ${activeTab === 'Tab1' ? 'block' : 'hidden'}`}><WelcomeTab /></div>
+                  <div className={`h-full ${activeTab === 'Tab2' ? 'block' : 'hidden'}`}><SlidesTab /></div>
+                  <div className={`h-full ${activeTab === 'Tab3' ? 'block' : 'hidden'}`}><ItemsTab isAdmin={isAdmin}/></div>
+                  <div className={`h-full ${activeTab === 'Tab4' ? 'block' : 'hidden'}`}><QATab /></div>
+                </div>
+              </main>
+            </div>
+          </div>
+
+          {/* --- Settings Modal --- */}
+          {isSettingsOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-lg p-4 animate-fade-in">
+              <div className="bg-gray-50 dark:bg-neutral-900 w-full max-w-md rounded-2xl shadow-2xl p-6 border border-gray-200 dark:border-neutral-800">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h2>
+                  <button onClick={() => setIsSettingsOpen(false)} className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-neutral-800 transition-colors">
+                    <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+                
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-2">Signed in as</label>
+                    <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-gray-200 dark:border-neutral-700 flex items-center gap-3">
+                      <UserButton /> 
+                      <span className="font-medium text-sm text-gray-800 dark:text-gray-200">{user?.primaryEmailAddress?.emailAddress}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-200 dark:border-neutral-800 space-y-2">
+                    <SignOutButton>
+                      <button className="w-full text-left px-3 py-2.5 text-red-600 dark:text-red-500 hover:bg-red-100/50 dark:hover:bg-red-900/30 font-semibold rounded-lg cursor-pointer transition-colors">
+                        Sign Out
+                      </button>
+                    </SignOutButton>
+                    
+                    <button onClick={() => setIsSettingsOpen(false)} className="w-full text-left px-3 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-neutral-800/60 font-semibold rounded-lg cursor-pointer transition-colors">
+                      Close
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* モーダル（簡略化） */}
-            {isSettingsOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                <div className="bg-white dark:bg-neutral-800 w-full max-w-md rounded-2xl shadow-2xl p-6 border dark:border-neutral-700 animate-fade-in pointer-events-auto">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold dark:text-white">設定</h2>
-                    <button onClick={() => setIsSettingsOpen(false)} className="p-1 cursor-pointer"><X className="w-6 h-6 text-gray-500" /></button>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm text-gray-500 mb-2">ログイン中</label>
-                      <div className="p-3 bg-gray-50 dark:bg-neutral-900 rounded-lg border dark:border-neutral-700 flex items-center gap-3">
-                        <UserButton /> 
-                        <span className="font-medium text-sm dark:text-gray-200">{user?.primaryEmailAddress?.emailAddress}</span>
-                      </div>
-                    </div>
-
-                    {/* ★追加: ログアウトボタン */}
-                    <div className="pt-2 border-t border-gray-100 dark:border-neutral-700">
-                      <SignOutButton>
-                        <button className="w-full py-2.5 mb-2 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 font-bold rounded-lg cursor-pointer transition-colors">
-                          ログアウト
-                        </button>
-                      </SignOutButton>
-                      
-                      <button onClick={() => setIsSettingsOpen(false)} className="w-full py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-lg cursor-pointer">
-                        閉じる
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
   )}
       </Show>
