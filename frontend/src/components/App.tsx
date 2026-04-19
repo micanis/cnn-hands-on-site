@@ -167,15 +167,15 @@ export default function App() {
   return (
     <>
       <Show when="signed-out">
-        <div className={`w-full h-screen flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'dark bg-neutral-950' : 'bg-gray-100'}`}>
-          <div className="bg-white dark:bg-neutral-900/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-gray-200 dark:border-neutral-800 max-w-md w-full text-center animate-fade-in">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gray-200 dark:bg-neutral-800 flex items-center justify-center">
-              <LogIn className="w-8 h-8 text-gray-600 dark:text-gray-400" />
+        <div className={`w-full h-screen flex flex-col items-center justify-center transition-colors duration-300 px-4 ${isDarkMode ? 'dark bg-neutral-950' : 'bg-gray-100'}`}>
+          <div className="bg-white dark:bg-neutral-900/80 backdrop-blur-xl p-6 sm:p-10 rounded-3xl shadow-2xl border border-gray-200 dark:border-neutral-800 max-w-md w-full text-center animate-fade-in">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-6 rounded-2xl bg-gray-200 dark:bg-neutral-800 flex items-center justify-center">
+              <LogIn className="w-7 h-7 sm:w-8 sm:h-8 text-gray-600 dark:text-gray-400" />
             </div>
-            <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Class Portal</h1>
-            <p className="text-gray-500 dark:text-gray-400 mb-8">Sign in to continue</p>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-gray-900 dark:text-white">Class Portal</h1>
+            <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-6 sm:mb-8">Sign in to continue</p>
             <SignInButton mode="modal">
-              <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl cursor-pointer transition-colors">
+              <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl cursor-pointer transition-colors text-sm sm:text-base">
                 Sign in with Google
               </button>
             </SignInButton>
@@ -185,19 +185,19 @@ export default function App() {
 
       <Show when="signed-in">
         {!isAllowed ? (
-          <div className={`w-full h-screen flex flex-col items-center justify-center transition-colors duration-300 ${isDarkMode ? 'dark bg-neutral-950' : 'bg-gray-100'}`}>
-            <div className="bg-white dark:bg-neutral-900/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-gray-200 dark:border-neutral-800 max-w-md w-full text-center animate-fade-in">
-              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
+          <div className={`w-full h-screen flex flex-col items-center justify-center transition-colors duration-300 px-4 ${isDarkMode ? 'dark bg-neutral-950' : 'bg-gray-100'}`}>
+            <div className="bg-white dark:bg-neutral-900/80 backdrop-blur-xl p-6 sm:p-10 rounded-3xl shadow-2xl border border-gray-200 dark:border-neutral-800 max-w-md w-full text-center animate-fade-in">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 text-2xl sm:text-3xl">
                 🔒
               </div>
-              <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Access Restricted</h1>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mb-8 leading-relaxed">
-                Sorry, the account <span className="font-semibold text-gray-700 dark:text-gray-200">{userEmail}</span> is not authorized to access this portal.
+              <h1 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-gray-900 dark:text-white">Access Restricted</h1>
+              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mb-6 sm:mb-8 leading-relaxed">
+                Sorry, the account <span className="font-semibold text-gray-700 dark:text-gray-200 break-all">{userEmail}</span> is not authorized to access this portal.
                 <br/><br/>
                 Please try again with your university-issued email address.
               </p>
               <SignOutButton>
-                <button className="w-full py-3 bg-gray-800 hover:bg-gray-900 dark:bg-gray-200 dark:hover:bg-white text-white dark:text-gray-900 font-bold rounded-xl cursor-pointer transition-colors">
+                <button className="w-full py-3 bg-gray-800 hover:bg-gray-900 dark:bg-gray-200 dark:hover:bg-white text-white dark:text-gray-900 font-bold rounded-xl cursor-pointer transition-colors text-sm sm:text-base">
                   Sign in with a different account
                 </button>
               </SignOutButton>
@@ -206,12 +206,12 @@ export default function App() {
         ) : (
         <div className={`w-full h-screen overflow-hidden transition-colors duration-300 select-none font-sans ${isDarkMode ? 'dark' : ''}`}>
           <div className="bg-gray-100 dark:bg-black h-full">
-            <div className="max-w-6xl mx-auto h-full p-4 flex flex-col gap-4">
+            <div className="max-w-6xl mx-auto h-full p-2 sm:p-4 flex flex-col gap-2 sm:gap-4">
               {/* --- Header --- */}
-              <header className="flex-shrink-0 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-2xl px-4 py-3">
-                <div className="flex items-center justify-center relative">
+              <header className="flex-shrink-0 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-xl border border-gray-200 dark:border-neutral-800 rounded-2xl px-3 sm:px-4 py-3">
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
                   {/* タブ */}
-                  <div className="bg-gray-200/70 dark:bg-neutral-800/70 p-1.5 rounded-2xl flex items-center relative w-4/5 max-w-lg">
+                  <div className="bg-gray-200/70 dark:bg-neutral-800/70 p-1.5 rounded-2xl flex items-center relative w-full sm:flex-1 sm:max-w-lg sm:mx-auto">
                     {/* アクティブタブのインジケーター */}
                     <div
                       className={`absolute top-1.5 bottom-1.5 bg-white dark:bg-neutral-700 rounded-xl shadow-md transition-all duration-300 ease-in-out`}
@@ -224,7 +224,7 @@ export default function App() {
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`relative z-10 w-full py-2 text-sm font-semibold rounded-xl transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-black ${
+                        className={`relative z-10 w-full py-2 text-xs sm:text-sm font-semibold rounded-xl transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-black ${
                           activeTab === tab.id
                             ? 'text-gray-900 dark:text-white'
                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
@@ -236,7 +236,7 @@ export default function App() {
                   </div>
 
                   {/* コントロール */}
-                  <div className="absolute right-4 flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-neutral-800 transition-colors">
                       {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                     </button>
@@ -275,9 +275,9 @@ export default function App() {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm text-gray-500 dark:text-gray-400 mb-2">Signed in as</label>
-                    <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-gray-200 dark:border-neutral-700 flex items-center gap-3">
+                    <div className="p-3 bg-white dark:bg-neutral-800/50 rounded-lg border border-gray-200 dark:border-neutral-700 flex items-center gap-3 min-w-0">
                       <UserButton /> 
-                      <span className="font-medium text-sm text-gray-800 dark:text-gray-200">{user?.primaryEmailAddress?.emailAddress}</span>
+                      <span className="font-medium text-xs sm:text-sm text-gray-800 dark:text-gray-200 truncate">{user?.primaryEmailAddress?.emailAddress}</span>
                     </div>
                   </div>
 

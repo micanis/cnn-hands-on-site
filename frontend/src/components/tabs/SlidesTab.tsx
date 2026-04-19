@@ -56,20 +56,20 @@ export default function SlidesTab({ slides, isLoading }: SlidesTabProps) {
 
   return (
     <div className="h-full max-w-4xl mx-auto animate-fade-in pointer-events-auto">
-      <h2 className="text-2xl font-bold mb-6 dark:text-white flex items-center gap-3">
-        <span className="w-2 h-7 bg-blue-500 rounded-full inline-block" />
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 dark:text-white flex items-center gap-2 sm:gap-3">
+        <span className="w-2 h-6 sm:h-7 bg-blue-500 rounded-full inline-block" />
         講義スライド
       </h2>
       {isLoading && <p className="text-gray-500 text-sm animate-pulse">スライドを読み込み中...</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {slides && slides.map(slide => (
-          <div key={slide.id} className="p-5 rounded-xl border border-gray-200 dark:border-neutral-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors bg-white dark:bg-neutral-800/50 flex flex-col group">
+          <div key={slide.id} className="p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-neutral-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors bg-white dark:bg-neutral-800/50 flex flex-col group">
             <div className="flex-1">
-              <span className="text-sm font-bold text-blue-500 mb-2 inline-block">Slide</span>
-              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2 leading-snug">{slide.title}</h3>
-              <p className="text-xs text-gray-400">{slide.file_path} • PDF</p>
+              <span className="text-xs sm:text-sm font-bold text-blue-500 mb-1 sm:mb-2 inline-block">Slide</span>
+              <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-200 mb-1 sm:mb-2 leading-snug">{slide.title}</h3>
+              <p className="text-xs text-gray-400 truncate">{slide.file_path} • PDF</p>
             </div>
-            <div className="flex gap-2 mt-6">
+            <div className="flex gap-2 mt-4 sm:mt-6">
               {/* 閲覧ボタン */}
               <button 
                 onClick={() => handleAction(slide.file_path, 'view')}

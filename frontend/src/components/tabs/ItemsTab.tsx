@@ -79,13 +79,13 @@ export default function ItemsTab({ isAdmin = false, items, isLoading, onUploadSu
 
   return (
     <div className="h-full max-w-4xl mx-auto animate-fade-in pointer-events-auto">
-      <h2 className="text-2xl font-bold mb-6 dark:text-white flex items-center gap-3">
-        <span className="w-2 h-7 bg-emerald-400 rounded-full inline-block" />
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 dark:text-white flex items-center gap-2 sm:gap-3">
+        <span className="w-2 h-6 sm:h-7 bg-emerald-400 rounded-full inline-block" />
         配布アイテム & アップロード
       </h2>
       
       {isAdmin && (
-        <div className="mb-10 p-6 rounded-2xl border-2 border-dashed border-emerald-200/70 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-neutral-800/30">
+        <div className="mb-8 sm:mb-10 p-4 sm:p-6 rounded-2xl border-2 border-dashed border-emerald-200/70 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-neutral-800/30">
         
         {/* 追加した入力フォーム部分 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-6">
@@ -141,19 +141,19 @@ export default function ItemsTab({ isAdmin = false, items, isLoading, onUploadSu
       )}
       
       {/* 配布済みアイテムリスト */}
-      <h3 className="text-lg font-bold mb-4 dark:text-gray-200 mt-8">公開中のアイテム</h3>
+      <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 dark:text-gray-200 mt-6 sm:mt-8">公開中のアイテム</h3>
       {isLoading && <p className="text-gray-500 text-sm animate-pulse">アイテムを読み込み中...</p>}
       <div className="space-y-4">
         {items && items.map(item => (
-          <div key={item.id} className="p-5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/50 flex justify-between items-center group hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors">
-            <div>
-              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-2 inline-block">Item</span>
-              <h4 className="font-bold dark:text-white text-lg">{item.title}</h4>
-              <p className="text-xs text-gray-400 mt-1">{item.file_path}</p>
+          <div key={item.id} className="p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/50 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 group hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors">
+            <div className="min-w-0">
+              <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1 sm:mb-2 inline-block">Item</span>
+              <h4 className="font-bold dark:text-white text-base sm:text-lg truncate">{item.title}</h4>
+              <p className="text-xs text-gray-400 mt-1 truncate">{item.file_path}</p>
             </div>
             <button 
               onClick={() => handleDownload(item.file_path)}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/50 rounded-lg text-sm font-semibold cursor-pointer transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/50 rounded-lg text-sm font-semibold cursor-pointer transition-colors shrink-0 w-full sm:w-auto"
             >
               <Download className="w-4 h-4" />
               開く
