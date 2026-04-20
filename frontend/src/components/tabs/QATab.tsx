@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import { MessageSquare, Send, Loader2, Trash2 } from 'lucide-react';
 import type { Question } from '../../types';
 import { questionApi } from '../../services/api';
+import type { Locale } from '../../i18n/translations';
+import { t } from '../../i18n/translations';
 
 interface QATabProps {
   isAdmin?: boolean;
   questions: Question[] | null;
   isLoading: boolean;
   onQuestionSubmit: () => Promise<void>;
+  locale: Locale;
 }
 
-function QATab({ isAdmin = false, questions, isLoading, onQuestionSubmit }: QATabProps) {
-  const [session, setSession] = useState("全体的な質問");
+function QATab({ isAdmin = false, questions, isLoading, onQuestionSubmit, locale }: QATabProps) {
+  const [session, setSession] = useState(t('qa', 'sessAll', locale));
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,24 +27,24 @@ function QATab({ isAdmin = false, questions, isLoading, onQuestionSubmit }: QATa
         setContent("");
         onQuestionSubmit();
       } else {
-        alert("送信に失敗しました。");
+        alert(t('qa', 'submitFail', locale));
       }
     } catch (err) {
       console.error(err);
-      alert("エラーが発生しました。");
+      alert(t('common', 'error', locale));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("この質問を削除しますか？")) return;
+    if (!confirm(t('qa', 'confirmDel', locale))) return;
     try {
       await questionApi.delete(id);
       onQuestionSubmit();
     } catch (err) {
       console.error(err);
-      alert("削除に失敗しました。");
+      alert(t('common', 'deleteFailed', locale));
     }
   };
 
@@ -49,32 +52,32 @@ function QATab({ isAdmin = false, questions, isLoading, onQuestionSubmit }: QATa
     <div className="h-full max-w-3xl mx-auto flex flex-col animate-fade-in pointer-events-auto pb-10">
       <h2 className="text-xl sm:text-2xl font-bold mb-2 dark:text-white flex items-center gap-2 sm:gap-3">
         <span className="w-2 h-6 sm:h-7 bg-orange-500 rounded-full inline-block" />
-        質問箱
+        {t('qa', 'heading', locale)}
       </h2>
-      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-6">講義内容やコードの実装に関する質問を匿名で送信できます。</p>
+      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-6">{t('qa', 'description', locale)}</p>
       
       {/* 投稿フォーム */}
       <div className="bg-orange-50/40 dark:bg-neutral-800/50 rounded-xl p-4 sm:p-6 border border-orange-100/70 dark:border-orange-900/40 mb-6 sm:mb-10 shadow-sm">
         <div className="space-y-4">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">関連するセッション</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('qa', 'session', locale)}</label>
             <select 
               value={session} 
               onChange={(e) => setSession(e.target.value)}
               className="w-full p-2 sm:p-2.5 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer"
             >
-              <option>全体的な質問</option>
-              <option>第1回について</option>
-              <option>第2回について</option>
+              <option>{t('qa', 'sessAll', locale)}</option>
+              <option>{t('qa', 'sess1', locale)}</option>
+              <option>{t('qa', 'sess2', locale)}</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">質問内容</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('qa', 'content', locale)}</label>
             <textarea 
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="w-full p-2.5 sm:p-3 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 dark:text-white outline-none resize-none h-28 sm:h-32 text-sm focus:ring-2 focus:ring-orange-500 transition-shadow" 
-              placeholder="質問を入力..."
+              placeholder={t('qa', 'placeholder', locale)}
             ></textarea>
           </div>
           <div className="flex justify-end pt-2">
@@ -88,7 +91,7 @@ function QATab({ isAdmin = false, questions, isLoading, onQuestionSubmit }: QATa
               `}
             >
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {isSubmitting ? "送信中..." : "送信する"}
+              {isSubmitting ? t('qa', 'submitting', locale) : t('qa', 'submit', locale)}
             </button>
           </div>
         </div>
@@ -97,9 +100,9 @@ function QATab({ isAdmin = false, questions, isLoading, onQuestionSubmit }: QATa
       {/* タイムライン */}
       <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 dark:text-gray-200 flex items-center gap-2">
         <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-        みんなの質問
+        {t('qa', 'timeline', locale)}
       </h3>
-      {isLoading && <p className="text-gray-500 text-sm animate-pulse">質問を読み込み中...</p>}
+      {isLoading && <p className="text-gray-500 text-sm animate-pulse">{t('common', 'loading', locale)}</p>}
       <div className="space-y-4">
         {questions && questions.length > 0 ? (
           questions.map((q) => (
@@ -113,7 +116,7 @@ function QATab({ isAdmin = false, questions, isLoading, onQuestionSubmit }: QATa
                     <button
                       onClick={() => handleDelete(q.id)}
                       className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                      title="削除"
+                      title={t('common', 'delete', locale)}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -127,7 +130,7 @@ function QATab({ isAdmin = false, questions, isLoading, onQuestionSubmit }: QATa
             </div>
           ))
         ) : !isLoading && (
-          <p className="text-gray-500 text-sm text-center py-8">まだ質問はありません。</p>
+          <p className="text-gray-500 text-sm text-center py-8">{t('qa', 'noQuestions', locale)}</p>
         )}
       </div>
     </div>
