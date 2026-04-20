@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pencil, Trash2, X, Check } from 'lucide-react';
+import { LuPencil, LuTrash2, LuX, LuCheck } from 'react-icons/lu';
 import type { Material } from '../../types';
 import { materialApi, storageApi } from '../../services/api';
 import type { Locale } from '../../i18n/translations';
@@ -22,7 +22,7 @@ function SlidesTab({ isAdmin = false, slides, isLoading, onRefresh, locale }: Sl
     if (!fileName) return;
     try {
       const url = storageApi.getDownloadUrl(fileName, action);
-      
+
       if (action === 'view') {
         window.open(url, '_blank');
       } else {
@@ -99,10 +99,10 @@ function SlidesTab({ isAdmin = false, slides, isLoading, onRefresh, locale }: Sl
                 />
                 <div className="flex gap-2">
                   <button onClick={saveEdit} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors">
-                    <Check className="w-3.5 h-3.5" /> {t('common', 'save', locale)}
+                    <LuCheck className="w-3.5 h-3.5" /> {t('common', 'save', locale)}
                   </button>
                   <button onClick={cancelEdit} className="flex items-center gap-1 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold cursor-pointer transition-colors">
-                    <X className="w-3.5 h-3.5" /> {t('common', 'cancel', locale)}
+                    <LuX className="w-3.5 h-3.5" /> {t('common', 'cancel', locale)}
                   </button>
                 </div>
               </div>
@@ -114,10 +114,10 @@ function SlidesTab({ isAdmin = false, slides, isLoading, onRefresh, locale }: Sl
                     {isAdmin && (
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => startEdit(slide)} className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-400 hover:text-blue-500 transition-colors cursor-pointer" title={t('common', 'edit', locale)}>
-                          <Pencil className="w-3.5 h-3.5" />
+                          <LuPencil className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={() => handleDelete(slide.id, slide.title)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 transition-colors cursor-pointer" title={t('common', 'delete', locale)}>
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <LuTrash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     )}
@@ -126,13 +126,13 @@ function SlidesTab({ isAdmin = false, slides, isLoading, onRefresh, locale }: Sl
                   <p className="text-xs text-gray-400 truncate">{slide.file_path} • PDF</p>
                 </div>
                 <div className="flex gap-2 mt-4 sm:mt-6">
-                  <button 
+                  <button
                     onClick={() => handleAction(slide.file_path, 'view')}
                     className="flex-1 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
                   >
                     {t('common', 'view', locale)}
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleAction(slide.file_path, 'download')}
                     className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-gray-300 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
                   >

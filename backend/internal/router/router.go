@@ -13,6 +13,7 @@ func New(
 	materialHandler *handler.MaterialHandler,
 	questionHandler *handler.QuestionHandler,
 	storageHandler *handler.StorageHandler,
+	surveyHandler *handler.SurveyHandler,
 ) http.Handler {
 	mux := http.NewServeMux()
 
@@ -32,6 +33,15 @@ func New(
 
 	// 後方互換: フロントエンドの既存パスをサポート
 	mux.HandleFunc("POST /api/ask-question", questionHandler.HandleCreate)
+
+	// --- Surveys CRUD ---
+	mux.HandleFunc("GET /api/surveys", surveyHandler.HandleListActive)
+	mux.HandleFunc("POST /api/surveys", surveyHandler.HandleCreate)
+	mux.HandleFunc("PUT /api/surveys/{id}", surveyHandler.HandleUpdate)
+	mux.HandleFunc("DELETE /api/surveys/{id}", surveyHandler.HandleDelete)
+	mux.HandleFunc("POST /api/surveys/{id}/respond", surveyHandler.HandleRespond)
+	mux.HandleFunc("GET /api/surveys/{id}/responses", surveyHandler.HandleListResponses)
+	mux.HandleFunc("GET /api/surveys/{id}/check", surveyHandler.HandleCheckResponse)
 
 	// --- Storage ---
 	mux.HandleFunc("GET /api/download-url", storageHandler.HandleDownload)

@@ -42,10 +42,12 @@ func main() {
 	// --- 依存性注入（Dependency Injection） ---
 	materialRepo := repository.NewMaterialRepository(db)
 	questionRepo := repository.NewQuestionRepository(db)
+	surveyRepo := repository.NewSurveyRepository(db)
 
 	materialHandler := handler.NewMaterialHandler(materialRepo, gcsClient, bucketName)
 	questionHandler := handler.NewQuestionHandler(questionRepo)
 	storageHandler := handler.NewStorageHandler(gcsClient, bucketName)
+	surveyHandler := handler.NewSurveyHandler(surveyRepo)
 
 	// --- HTTP サーバー ---
 	port := os.Getenv("PORT")
@@ -55,7 +57,7 @@ func main() {
 
 	httpServer := &http.Server{
 		Addr:         ":" + port,
-		Handler:      router.New(materialHandler, questionHandler, storageHandler),
+		Handler:      router.New(materialHandler, questionHandler, storageHandler, surveyHandler),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,

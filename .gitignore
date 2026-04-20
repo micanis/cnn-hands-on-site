@@ -23,3 +23,5 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 project-21800756-96da-4e69-825-debe14f745f5.json
+
+*.sql

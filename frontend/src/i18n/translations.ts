@@ -9,7 +9,7 @@ export const translations = {
     home: { ja: 'ホーム', en: 'Home' },
     slides: { ja: 'スライド', en: 'Slides' },
     items: { ja: '配布物', en: 'Items' },
-    qa: { ja: '質問箱', en: 'Q&A' },
+    qa: { ja: 'フィードバック', en: 'Feedback' },
   },
 
   // --- 共通 ---
@@ -105,6 +105,33 @@ export const translations = {
     timeline: { ja: 'みんなの質問', en: "Everyone's Questions" },
     noQuestions: { ja: 'まだ質問はありません。', en: 'No questions yet.' },
     confirmDel: { ja: 'この質問を削除しますか？', en: 'Delete this question?' },
+  },
+
+  // --- アンケート ---
+  survey: {
+    heading:       { ja: 'アンケート',             en: 'Survey' },
+    noSurveys:     { ja: '現在アンケートはありません。', en: 'No surveys available.' },
+    respondBtn:    { ja: '回答する',              en: 'Answer' },
+    alreadyDone:   { ja: '回答済み',            en: 'Answered' },
+    submitBtn:     { ja: '送信する',              en: 'Submit' },
+    submitting:    { ja: '送信中...',             en: 'Submitting...' },
+    submitDone:    { ja: '回答を送信しました！ありがとうございます。', en: 'Thank you for your response!' },
+    submitFail:    { ja: '送信に失敗しました。',    en: 'Failed to submit.' },
+    responses:     { ja: '回答一覧',              en: 'Responses' },
+    respondent:    { ja: '回答者',               en: 'Respondent' },
+    answeredAt:    { ja: '回答日時',              en: 'Answered At' },
+    toggleActive:  { ja: '受付状態を変更',         en: 'Toggle Active' },
+    createSurvey:  { ja: 'アンケートを作成',        en: 'Create Survey' },
+    surveyTitle:   { ja: 'アンケートタイトル',      en: 'Survey Title' },
+    description:   { ja: '説明文（任意）',         en: 'Description (optional)' },
+    addQuestion:   { ja: '質問を追加',            en: 'Add Question' },
+    questionText:  { ja: '質問文',               en: 'Question' },
+    optionA:       { ja: '選択肢A',              en: 'Option A' },
+    optionB:       { ja: '選択肢B',              en: 'Option B' },
+    // ホームタブのバナー
+    bannerTitle:   { ja: 'アンケート実施中！',      en: 'Survey in Progress!' },
+    bannerMsg:     { ja: 'フィードバックタブから回答できます。', en: 'You can respond from the Feedback tab.' },
+    bannerBtn:     { ja: 'フィードバックへ →',     en: 'Go to Feedback →' },
   },
 } as const;
 

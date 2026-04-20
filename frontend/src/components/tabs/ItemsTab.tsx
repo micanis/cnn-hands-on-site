@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Download, Loader2, Trash2 } from 'lucide-react';
+import { LuUpload, LuDownload, LuLoader, LuTrash2 } from 'react-icons/lu';
 import type { Material } from '../../types';
 import type { Locale } from '../../i18n/translations';
 import { t } from '../../i18n/translations';
@@ -130,7 +130,7 @@ function ItemsTab({ isAdmin = false, items, isLoading, onUploadSuccess, locale }
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20'}
             `}
             >
-              {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+              {isUploading ? <LuLoader className="w-5 h-5 animate-spin" /> : <LuUpload className="w-5 h-5" />}
               {isUploading ? t('items', 'uploading', locale) : t('items', 'uploadBtn', locale)}
             </button>
 
@@ -154,7 +154,7 @@ function ItemsTab({ isAdmin = false, items, isLoading, onUploadSuccess, locale }
                 onClick={() => handleDownload(item.file_path)}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/50 rounded-lg text-sm font-semibold cursor-pointer transition-colors w-full sm:w-auto"
               >
-                <Download className="w-4 h-4" />
+                <LuDownload className="w-4 h-4" />
                 {t('common', 'open', locale)}
               </button>
               {isAdmin && (
@@ -163,7 +163,7 @@ function ItemsTab({ isAdmin = false, items, isLoading, onUploadSuccess, locale }
                   className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
                   title={t('common', 'delete', locale)}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <LuTrash2 className="w-4 h-4" />
                 </button>
               )}
             </div>
