@@ -1,39 +1,28 @@
 import React, { useState } from 'react';
-import { MessageSquare, Send, Loader2 } from 'lucide-react';
-
-interface Question {
-  id: number;
-  session: string;
-  content: string;
-  created_at: string;
-}
+import { MessageSquare, Send, Loader2, Trash2 } from 'lucide-react';
+import type { Question } from '../../types';
+import { questionApi } from '../../services/api';
 
 interface QATabProps {
+  isAdmin?: boolean;
   questions: Question[] | null;
   isLoading: boolean;
   onQuestionSubmit: () => Promise<void>;
 }
 
-function QATab({ questions, isLoading, onQuestionSubmit }: QATabProps) {
+function QATab({ isAdmin = false, questions, isLoading, onQuestionSubmit }: QATabProps) {
   const [session, setSession] = useState("全体的な質問");
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 質問を送信する処理
   const handleSubmit = async () => {
     if (!content.trim()) return;
     setIsSubmitting(true);
-
     try {
-      const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/ask-question`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session, content }),
-      });
-
+      const res = await questionApi.create({ session, content });
       if (res.ok) {
-        setContent(""); // 入力欄をクリア
-        onQuestionSubmit(); // 親コンポーネントに更新を通知
+        setContent("");
+        onQuestionSubmit();
       } else {
         alert("送信に失敗しました。");
       }
@@ -42,6 +31,17 @@ function QATab({ questions, isLoading, onQuestionSubmit }: QATabProps) {
       alert("エラーが発生しました。");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("この質問を削除しますか？")) return;
+    try {
+      await questionApi.delete(id);
+      onQuestionSubmit();
+    } catch (err) {
+      console.error(err);
+      alert("削除に失敗しました。");
     }
   };
 
@@ -94,7 +94,7 @@ function QATab({ questions, isLoading, onQuestionSubmit }: QATabProps) {
         </div>
       </div>
 
-      {/* タイムライン（過去の質問一覧） */}
+      {/* タイムライン */}
       <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 dark:text-gray-200 flex items-center gap-2">
         <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
         みんなの質問
@@ -103,11 +103,22 @@ function QATab({ questions, isLoading, onQuestionSubmit }: QATabProps) {
       <div className="space-y-4">
         {questions && questions.length > 0 ? (
           questions.map((q) => (
-            <div key={q.id} className="p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 flex flex-col gap-2 sm:gap-3 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
+            <div key={q.id} className="p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 flex flex-col gap-2 sm:gap-3 hover:border-orange-300 dark:hover:border-orange-700 transition-colors group">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0 border-b border-gray-100 dark:border-neutral-700 pb-2">
-                <span className="text-xs font-bold px-2 py-0.5 sm:py-1 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded w-fit">
-                  {q.session}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold px-2 py-0.5 sm:py-1 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded w-fit">
+                    {q.session}
+                  </span>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDelete(q.id)}
+                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                      title="削除"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
                 <span className="text-xs text-gray-400 font-mono">{q.created_at}</span>
               </div>
               <p className="text-gray-700 dark:text-gray-200 text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">

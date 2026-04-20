@@ -3,37 +3,14 @@ import { Show, SignInButton, UserButton, SignOutButton } from '@clerk/astro/reac
 import { $userStore } from '@clerk/astro/client';
 import { Sun, Moon, Settings, X, LogIn } from 'lucide-react';
 import { WelcomeSkeleton, SlidesSkeleton, ItemsSkeleton, QASkeleton } from './ui/Skeletons';
+import { materialApi, questionApi } from '../services/api';
+import type { Material, Question, NewsItem, Tab } from '../types';
 
 // React.lazy による遅延ロード（タブ単位でコード分割）
 const WelcomeTab = React.lazy(() => import('./tabs/WelcomeTab'));
 const SlidesTab = React.lazy(() => import('./tabs/SlidesTab'));
 const ItemsTab = React.lazy(() => import('./tabs/ItemsTab'));
 const QATab = React.lazy(() => import('./tabs/QATab'));
-
-// --- 型定義 ---
-interface Tab { id: string; label: string; }
-
-// 各タブで使われるデータモデルの型定義
-interface Material {
-  id: number;
-  title: string;
-  pages?: number;
-  category: string;
-  file_path: string;
-}
-
-interface Question {
-  id: number;
-  session: string;
-  content: string;
-  created_at: string;
-}
-
-interface NewsItem {
-  date: string;
-  text: string;
-  tag: string;
-}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -90,10 +67,9 @@ export default function App() {
     { id: 'Tab4', label: 'Q&A' }
   ];
 
-  // --- データ取得ロジック ---
+  // --- データ取得ロジック（API サービス経由） ---
   useEffect(() => {
     const fetchTabData = async () => {
-      // 対応するデータがキャッシュにない場合のみローディング状態にする
       const isDataCached = 
         (activeTab === 'Tab1' && news !== null) ||
         (activeTab === 'Tab2' && slides !== null) ||
@@ -110,8 +86,7 @@ export default function App() {
         switch (activeTab) {
           case 'Tab1':
             if (news === null) {
-              const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials`);
-              const data: Material[] = await res.json();
+              const data = await materialApi.list();
               const latestMaterials = [...data].reverse().slice(0, 3);
               const generatedNews = latestMaterials.map(item => ({
                 date: "New",
@@ -123,22 +98,19 @@ export default function App() {
             break;
           case 'Tab2':
             if (slides === null) {
-              const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=slide`);
-              const data = await res.json();
+              const data = await materialApi.list('slide');
               setSlides(data);
             }
             break;
           case 'Tab3':
             if (items === null) {
-              const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=item`);
-              const data = await res.json();
+              const data = await materialApi.list('item');
               setItems(data);
             }
             break;
           case 'Tab4':
             if (questions === null) {
-              const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/questions`);
-              const data = await res.json();
+              const data = await questionApi.list();
               setQuestions(data);
             }
             break;
@@ -153,15 +125,18 @@ export default function App() {
     fetchTabData();
   }, [activeTab]);
 
+  const refreshSlides = useCallback(async () => {
+    const data = await materialApi.list('slide');
+    setSlides(data);
+  }, []);
+
   const refreshItems = useCallback(async () => {
-    const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/materials?category=item`);
-    const data = await res.json();
+    const data = await materialApi.list('item');
     setItems(data);
   }, []);
 
   const refreshQuestions = useCallback(async () => {
-    const res = await fetch(`${import.meta.env.PUBLIC_API_URL}/api/questions`);
-    const data = await res.json();
+    const data = await questionApi.list();
     setQuestions(data);
   }, []);
 
@@ -260,7 +235,7 @@ export default function App() {
                   )}
                   {activeTab === 'Tab2' && (
                     <Suspense fallback={<SlidesSkeleton />}>
-                      <SlidesTab isLoading={isLoading} slides={slides} />
+                      <SlidesTab isAdmin={isAdmin} isLoading={isLoading} slides={slides} onRefresh={refreshSlides} />
                     </Suspense>
                   )}
                   {activeTab === 'Tab3' && (
@@ -270,7 +245,7 @@ export default function App() {
                   )}
                   {activeTab === 'Tab4' && (
                     <Suspense fallback={<QASkeleton />}>
-                      <QATab isLoading={isLoading} questions={questions} onQuestionSubmit={refreshQuestions} />
+                      <QATab isAdmin={isAdmin} isLoading={isLoading} questions={questions} onQuestionSubmit={refreshQuestions} />
                     </Suspense>
                   )}
                 </div>

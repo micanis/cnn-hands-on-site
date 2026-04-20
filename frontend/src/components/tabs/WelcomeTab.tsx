@@ -1,11 +1,5 @@
 import React from 'react';
-
-// App.tsxから渡されるpropsの型
-interface NewsItem {
-  date: string;
-  text: string;
-  tag: string;
-}
+import type { NewsItem } from '../../types';
 
 interface WelcomeTabProps {
   news: NewsItem[] | null;
